@@ -8,7 +8,10 @@ Wrong World is a small React game prototype built with Vite. It currently runs a
 npm install
 npm run dev
 npm run build
+npm run build:exe
 ```
+
+The Windows portable executable is generated at `release/Wrong World 0.1.0.exe`.
 
 ## Project start rules
 

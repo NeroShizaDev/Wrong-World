@@ -2,10 +2,14 @@
   "name": "wrong-world",
   "private": true,
   "version": "0.1.0",
+  "description": "Absurd isekai death-collection game.",
+  "author": "NeroShizaDev",
+  "main": "electron/main.cjs",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "build:exe": "npm run build && electron-builder --win portable",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -16,7 +20,27 @@
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
+    "electron": "^42.2.0",
+    "electron-builder": "^26.8.1",
     "typescript": "^5.9.3",
     "vite": "^8.0.10"
+  },
+  "build": {
+    "appId": "dev.neroshiza.wrongworld",
+    "productName": "Wrong World",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "signAndEditExecutable": false,
+      "target": [
+        "portable"
+      ]
+    }
   }
 }
