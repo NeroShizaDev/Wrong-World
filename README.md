@@ -1,6 +1,6 @@
 # Wrong World
 
-Wrong World is a small React game prototype built with Vite. The first checkpoint contains the main menu art, audio assets, a playable reality-console loop, and Git LFS rules for binary game files.
+Wrong World is a small React game prototype built with Vite. It currently runs as a branching text adventure about dying, remembering why you died, and using that knowledge to break out of a bugged isekai room.
 
 ## Commands
 
@@ -19,6 +19,10 @@ npm run build
 
 ## Current loop
 
-- `NEW GAME` starts a new run.
-- `LOAD REALITY` restores the last saved browser-local state.
-- `SCAN`, `PATCH`, `DISTORT`, and `RESET` change the reality state and save progress.
+- `ПРОСНУТЬСЯ` starts the run.
+- Each death unlocks memory and adds an entry to the death collection.
+- Some choices appear only after the player has learned from previous deaths.
+- The computer can launch nested copies of the game with degrading graphics modes.
+- Death and memory collection progress is saved in browser `localStorage`.
+- `Arts/wrong-world-menu-v2.png` is used for both the title screen and the first room scene.
+- Music cues are mapped by scene: boot menu, main game loop, window death, regular deaths, and victory.
