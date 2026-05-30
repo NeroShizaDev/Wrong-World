@@ -389,3 +389,395 @@ button:focus-visible {
     max-height: 58vh;
   }
 }
+
+.mode-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.mode-card {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 3px 10px;
+  align-items: center;
+  min-height: 74px;
+  padding: 12px;
+  border: 2px solid rgba(196, 163, 90, 0.72);
+  border-radius: 12px;
+  background: rgba(10, 10, 18, 0.58);
+  color: #f6ead2;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color 0.18s ease,
+    background 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+
+.mode-card:hover,
+.mode-card:focus-visible {
+  border-color: #ffdd57;
+  background: rgba(255, 221, 87, 0.1);
+  box-shadow: 0 0 24px rgba(255, 221, 87, 0.12);
+  transform: translateY(-1px);
+}
+
+.mode-card--runner {
+  border-color: rgba(55, 255, 139, 0.72);
+}
+
+.mode-card--runner:hover,
+.mode-card--runner:focus-visible {
+  border-color: #37ff8b;
+  background: rgba(55, 255, 139, 0.1);
+  box-shadow: 0 0 24px rgba(55, 255, 139, 0.14);
+}
+
+.mode-card__icon {
+  grid-row: 1 / span 2;
+  font-size: 2rem;
+}
+
+.mode-card__title {
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.mode-card__desc {
+  color: rgba(232, 224, 212, 0.68);
+  font-size: 0.78rem;
+  line-height: 1.3;
+}
+
+.runner-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: max(12px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 221, 87, 0.22), transparent 20rem),
+    linear-gradient(160deg, #5d2dff 0%, #14102c 46%, #07060d 100%);
+  color: #fff6db;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  touch-action: none;
+  user-select: none;
+}
+
+.runner-phone {
+  width: min(100vw - 20px, 430px);
+  height: min(100dvh - 24px, 860px);
+  min-height: 640px;
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  gap: 8px;
+  padding: 12px;
+  border: 3px solid rgba(255, 255, 255, 0.16);
+  border-radius: 30px;
+  background: linear-gradient(180deg, rgba(12, 20, 46, 0.96), rgba(4, 5, 16, 0.98));
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.runner-hud,
+.runner-help {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.runner-stat,
+.runner-help span {
+  min-height: 34px;
+  display: grid;
+  place-items: center;
+  padding: 6px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.09);
+  color: #fff;
+  font-size: 0.86rem;
+  font-weight: 900;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
+}
+
+.runner-progress,
+.boss-bar span {
+  height: 16px;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.runner-progress span,
+.boss-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #37ff8b, #ffdd57, #ff5f6d);
+  transition: width 0.12s linear;
+}
+
+.boss-bar {
+  display: grid;
+  gap: 5px;
+  padding: 6px 10px;
+  border: 2px solid rgba(255, 95, 109, 0.55);
+  border-radius: 16px;
+  background: rgba(110, 0, 26, 0.38);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 1000;
+  text-transform: uppercase;
+}
+
+.boss-bar span {
+  height: 12px;
+}
+
+.boss-bar i {
+  background: linear-gradient(90deg, #ffdd57, #ff5f6d);
+}
+
+.runner-arena {
+  position: relative;
+  overflow: hidden;
+  border: 3px solid rgba(255, 255, 255, 0.14);
+  border-radius: 26px;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.07) 1px, transparent 1px) 0 0 / 25% 100%,
+    linear-gradient(180deg, #47c4ff 0%, #6546ff 48%, #271450 100%);
+  box-shadow: inset 0 0 34px rgba(0, 0, 0, 0.35);
+  touch-action: none;
+}
+
+.runner-road-lines {
+  position: absolute;
+  inset: -20% 7% 0;
+  opacity: 0.55;
+  background:
+    repeating-linear-gradient(180deg, transparent 0 34px, rgba(255, 255, 255, 0.45) 35px 58px),
+    linear-gradient(90deg, transparent 24%, rgba(255, 255, 255, 0.35) 25% 26%, transparent 27% 49%, rgba(255, 255, 255, 0.35) 50% 51%, transparent 52% 74%, rgba(255, 255, 255, 0.35) 75% 76%, transparent 77%);
+  animation: road-scroll 0.9s linear infinite;
+}
+
+@keyframes road-scroll {
+  to { transform: translateY(58px); }
+}
+
+.runner-player,
+.runner-enemy,
+.runner-gate,
+.runner-bullet,
+.runner-rocket,
+.runner-boss,
+.runner-floater {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  will-change: transform, left, top;
+}
+
+.runner-player {
+  top: 88%;
+  z-index: 8;
+  min-width: 74px;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 7px 8px 5px;
+  border: 3px solid #ffdd57;
+  border-radius: 20px;
+  background: linear-gradient(180deg, #37ff8b, #159dff);
+  color: #121212;
+  font-weight: 1000;
+  box-shadow: 0 12px 0 rgba(0, 0, 0, 0.22), 0 0 28px rgba(55, 255, 139, 0.44);
+}
+
+.runner-player--shield {
+  box-shadow: 0 0 0 9px rgba(70, 205, 255, 0.28), 0 0 34px rgba(70, 205, 255, 0.8);
+}
+
+.runner-squad-cloud {
+  display: flex;
+  gap: 1px;
+  font-size: 1.18rem;
+}
+
+.runner-bullet {
+  z-index: 5;
+  width: 10px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: #ffef7a;
+  color: transparent;
+  box-shadow: 0 0 16px #ffef7a;
+}
+
+.runner-rocket {
+  z-index: 5;
+  font-size: 1.35rem;
+  filter: drop-shadow(0 0 8px #ffdd57);
+}
+
+.runner-enemy {
+  z-index: 4;
+  width: 76px;
+  min-height: 58px;
+  display: grid;
+  place-items: center;
+  gap: 1px;
+  padding: 5px;
+  border: 2px solid rgba(255, 255, 255, 0.24);
+  border-radius: 18px;
+  background: rgba(20, 14, 35, 0.82);
+  box-shadow: 0 8px 0 rgba(0, 0, 0, 0.22);
+}
+
+.runner-enemy span {
+  font-size: 1.45rem;
+}
+
+.runner-enemy small {
+  max-width: 70px;
+  overflow: hidden;
+  color: #fff;
+  font-size: 0.53rem;
+  font-weight: 1000;
+  line-height: 1;
+  text-align: center;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.runner-enemy i {
+  width: 100%;
+  height: 5px;
+  border-radius: 999px;
+  background: #ff5f6d;
+}
+
+.runner-enemy--babushka { background: rgba(255, 95, 109, 0.84); }
+.runner-enemy--petrovich { background: rgba(255, 150, 48, 0.86); }
+.runner-enemy--squad { width: 104px; background: rgba(80, 55, 25, 0.9); }
+.runner-enemy--bossMinion { background: rgba(132, 45, 255, 0.86); }
+
+.runner-gate {
+  z-index: 3;
+  width: 128px;
+  min-height: 56px;
+  display: grid;
+  place-items: center;
+  border: 4px solid currentColor;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.18);
+  font-size: 1.05rem;
+  font-weight: 1000;
+  text-align: center;
+  text-transform: uppercase;
+  box-shadow: 0 10px 0 rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(3px);
+}
+
+.runner-gate--good { color: #37ff8b; }
+.runner-gate--bad { color: #ff5f6d; }
+.runner-gate--power { color: #ffdd57; }
+
+.runner-boss {
+  z-index: 2;
+  width: 190px;
+  height: 105px;
+  display: grid;
+  place-items: center;
+  border: 4px solid #ff5f6d;
+  border-radius: 40px 40px 24px 24px;
+  background: linear-gradient(180deg, #ffdd57, #ff5f6d);
+  color: #211;
+  font-weight: 1000;
+  box-shadow: 0 13px 0 rgba(0, 0, 0, 0.22), 0 0 32px rgba(255, 95, 109, 0.55);
+}
+
+.runner-boss span {
+  font-size: 2.5rem;
+}
+
+.runner-floater {
+  z-index: 9;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #fff;
+  color: #111;
+  font-size: 0.84rem;
+  font-weight: 1000;
+  pointer-events: none;
+  text-transform: uppercase;
+}
+
+.runner-overlay {
+  position: absolute;
+  z-index: 20;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 12px;
+  padding: 26px;
+  background: rgba(8, 7, 18, 0.78);
+  text-align: center;
+  backdrop-filter: blur(5px);
+}
+
+.runner-overlay h1 {
+  margin: 0;
+  color: #ffdd57;
+  font-size: clamp(2.2rem, 12vw, 4rem);
+  font-weight: 1000;
+  line-height: 0.88;
+  text-shadow: 0 6px 0 rgba(0, 0, 0, 0.35);
+}
+
+.runner-overlay p {
+  max-width: 310px;
+  margin: 0 auto;
+  color: rgba(255, 246, 219, 0.86);
+  line-height: 1.45;
+}
+
+.runner-overlay__actions {
+  display: grid;
+  gap: 8px;
+  width: min(280px, 100%);
+  margin: 0 auto;
+}
+
+.runner-help {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.runner-help span {
+  min-height: 30px;
+  padding-inline: 4px;
+  font-size: 0.68rem;
+}
+
+@media (max-height: 690px) {
+  .runner-phone {
+    min-height: 0;
+    height: calc(100dvh - 16px);
+    border-radius: 22px;
+  }
+
+  .runner-gate {
+    min-height: 48px;
+    font-size: 0.9rem;
+  }
+
+  .runner-help {
+    display: none;
+  }
+}
