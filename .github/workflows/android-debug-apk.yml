@@ -36,9 +36,9 @@ jobs:
       - name: Sync Web Assets to Native Android
         run: npx cap sync android
 
-      - name: Bypass Jetifier for BouncyCastle
+      - name: Force Safe BouncyCastle Version
         run: |
-          echo "android.jetifier.ignorelist=bcprov-jdk18on" >> android/gradle.properties
+          echo "allprojects { configurations.all { resolutionStrategy { force 'org.bouncycastle:bcprov-jdk18on:1.78.1' } } }" >> android/build.gradle
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
