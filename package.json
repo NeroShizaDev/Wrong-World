@@ -7,11 +7,12 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "android:install": "npm install @capacitor/core @capacitor/android && npm install -D @capacitor/cli",
-    "android:init": "npm run build && npx cap add android",
-    "android:sync": "npm run build && npx cap sync android",
-    "android:open": "npx cap open android",
-    "android:build": "npm run android:sync && cd android && ./gradlew assembleDebug"
+    "android:install": "npm install @capacitor/core @capacitor/cli @capacitor/android --save",
+    "android:init": "npm run build && npx --no-install cap add android",
+    "android:sync": "npm run build && npx --no-install cap sync android",
+    "android:open": "npx --no-install cap open android",
+    "android:build": "npm run android:sync && cd android && ./gradlew assembleDebug",
+    "android:doctor": "node scripts/android-doctor.mjs"
   },
   "dependencies": {
     "react": "^19.2.3",

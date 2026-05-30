@@ -56,6 +56,7 @@ Recommended local setup after registry access is available:
 ```powershell
 npm run android:install
 npm run android:init
+npm run android:doctor
 npm run android:sync
 npm run android:build
 ```

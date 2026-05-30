@@ -41,21 +41,31 @@ Run these commands after the npm registry is reachable from your environment:
 ```bash
 npm run android:install
 npm run android:init
+npm run android:doctor
 ```
 
 `android:install` installs:
 
 ```bash
-npm install @capacitor/core @capacitor/android
-npm install -D @capacitor/cli
+npm install @capacitor/core @capacitor/cli @capacitor/android --save
 ```
 
 `android:init` runs a production web build and then creates the native Android project:
 
 ```bash
 npm run build
-npx cap add android
+npx --no-install cap add android
 ```
+
+## Preflight / doctor
+
+Use the doctor script to check the registry, Capacitor dependencies, `android/`, Java, Android SDK environment variables, and Gradle wrapper status:
+
+```bash
+npm run android:doctor
+```
+
+It exits non-zero until the local machine has enough Android tooling to build an APK.
 
 ## Syncing web changes into Android
 
@@ -65,7 +75,7 @@ After changing React/Vite code:
 npm run android:sync
 ```
 
-This runs `npm run build` and then `npx cap sync android`.
+This runs `npm run build` and then `npx --no-install cap sync android`.
 
 ## Opening Android Studio
 
@@ -76,7 +86,7 @@ npm run android:open
 This delegates to:
 
 ```bash
-npx cap open android
+npx --no-install cap open android
 ```
 
 ## Building a debug APK
@@ -109,7 +119,7 @@ The web app is already mobile-first for the runner mode:
 - runner CSS disables page gestures inside the game area with `touch-action: none`;
 - both modes remain available inside the same Android app shell.
 
-After `npx cap add android` succeeds, verify the generated Android project and, if needed, set `android:screenOrientation="portrait"` on `MainActivity` in `android/app/src/main/AndroidManifest.xml`. App icons can stay as generated placeholders for MVP; replace them in a later polish pass.
+After `npx --no-install cap add android` succeeds, verify the generated Android project and, if needed, set `android:screenOrientation="portrait"` on `MainActivity` in `android/app/src/main/AndroidManifest.xml`. App icons can stay as generated placeholders for MVP; replace them in a later polish pass.
 
 ## If the registry blocks Capacitor
 
@@ -128,9 +138,10 @@ In this environment, npm returned `403 Forbidden` while trying to fetch Capacito
    npm run android:install
    npm run android:init
    npm run android:sync
+   npm run android:doctor
    ```
 
-3. Do not claim an APK is built until `npx cap sync android` and `./gradlew assembleDebug` have actually succeeded.
+3. Do not claim an APK is built until `npx --no-install cap sync android` and `./gradlew assembleDebug` have actually succeeded.
 
 ## Phase 2 option: separate APKs/flavors
 
