@@ -1029,12 +1029,18 @@ export default function App() {
             <br />
             Мир решил, что это ошибка.
           </p>
-          <button type="button" className="gold-button" onClick={handleRunnerStart}>
-            ANDROID РАННЕР MVP
-          </button>
-          <button type="button" className="danger-button title-card__secondary" onClick={handleStart}>
-            СТАРЫЙ WRONG WORLD
-          </button>
+          <div className="mode-grid" aria-label="Выбор режима">
+            <button type="button" className="mode-card" onClick={handleStart}>
+              <span className="mode-card__icon">🪟</span>
+              <span className="mode-card__title">Wrong World</span>
+              <span className="mode-card__desc">Оригинальный текстовый баг-исекай с коллекцией смертей.</span>
+            </button>
+            <button type="button" className="mode-card mode-card--runner" onClick={handleRunnerStart}>
+              <span className="mode-card__icon">🏃</span>
+              <span className="mode-card__title">Android Runner MVP</span>
+              <span className="mode-card__desc">Portrait-раннер: веди отряд пальцем, стреляй автоматически, бей босса.</span>
+            </button>
+          </div>
         </section>
       </main>
     );

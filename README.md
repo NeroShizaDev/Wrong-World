@@ -28,15 +28,42 @@ npm run build
 - Music cues are mapped by scene: boot menu, main game loop, window death, regular deaths, and victory.
 
 
-## Android runner MVP
+## Web / NPM direction
 
-The default title screen now includes **ANDROID РАННЕР MVP**. This launches the mobile-first portrait runner directly inside the existing React app instead of using a separate Unity prototype folder.
+Use npm for the existing React/Vite prototype:
 
-Current MVP gameplay:
+```powershell
+npm install
+npm run dev
+npm run build
+```
 
-- one-finger left/right drag controls tuned for Android portrait screens;
-- automatic shooting, squad count, shield, damage/fire-rate boosts, rockets and freeze gates;
-- tourists, Petrovich enemies, babushkas, Petrovich squads and a final boss;
-- win/lose overlay and fullscreen PWA manifest with portrait orientation.
+The title screen now presents two in-app modes:
 
-For Android packaging, the app is ready as a portrait PWA/TWA target. Capacitor dependencies were not added because the registry blocked `@capacitor/android` in this environment; use the built `dist/` folder as the web payload when native Android tooling is available.
+- **Wrong World** — the original branching text adventure.
+- **Android Runner MVP** — the mobile-first portrait runner prototype.
+
+## Android direction
+
+Android packaging is prepared through Capacitor in `capacitor.config.ts` with:
+
+- app id: `com.kotlew89.wrongworld`
+- app name: `Wrong World`
+- web output: `dist`
+
+Recommended local setup after registry access is available:
+
+```powershell
+npm run android:install
+npm run android:init
+npm run android:sync
+npm run android:build
+```
+
+The expected debug APK path after a successful Gradle build is:
+
+```text
+android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+If npm returns `403 Forbidden` for `@capacitor/*`, fix registry/proxy/auth access and rerun `npm run android:install`. This environment blocked Capacitor package downloads, so `android/` and an APK may need to be generated locally. Full instructions are in `docs/android-build.md`.
