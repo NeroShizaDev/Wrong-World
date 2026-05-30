@@ -1,14 +1,50 @@
 # Wrong World
 
-Wrong World is a small React game prototype built with Vite. It currently runs as a branching text adventure about dying, remembering why you died, and using that knowledge to break out of a bugged isekai room.
+Wrong World is a small React game prototype built with Vite. It contains two in-app modes from the title screen:
 
-## Commands
+- **Wrong World** — the original branching text adventure about dying, remembering why you died, and escaping a bugged isekai room.
+- **Android Runner MVP** — a mobile-first portrait runner prototype inside the same React app shell.
+
+## Web / NPM
+
+Use npm for the web build. Do not add Yarn or pnpm lockfiles.
 
 ```powershell
 npm install
 npm run dev
 npm run build
 ```
+
+`npm run build` writes the Vite output to `dist/`.
+
+## Android APK through GitHub Actions
+
+Local Android setup may fail in proxied environments with `403 Forbidden` while downloading `@capacitor/android`. The supported APK path for that case is the GitHub Actions workflow:
+
+1. Push the branch to GitHub.
+2. Open the repository on GitHub.
+3. Go to **Actions**.
+4. Select **Android Debug APK**.
+5. Click **Run workflow** and choose the branch.
+6. Wait for the workflow to finish.
+7. Open the completed workflow run and download the artifact named **app-debug-apk** from the artifacts section at the bottom of the page.
+8. Unzip the artifact; it contains `app-debug.apk`.
+
+The workflow is defined in `.github/workflows/android-debug-apk.yml`. It installs npm dependencies, builds the Vite app, creates `android/` with Capacitor if missing, runs `npx cap sync android`, builds `./gradlew assembleDebug`, and uploads:
+
+```text
+android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+## Install APK on Android 15
+
+Use either ADB:
+
+```powershell
+adb install -r app-debug.apk
+```
+
+Or copy `app-debug.apk` to the phone, open it from Files, and allow installs from that source when Android asks. After installation, open **Wrong World**; the Android shell contains both **Wrong World** and **Android Runner MVP**.
 
 ## Project start rules
 
@@ -16,79 +52,3 @@ npm run build
 - Keep large binary assets in Git LFS: art, audio, video, layered source files.
 - Do not commit generated folders like `node_modules/` or `dist/`.
 - Make a commit before large agent edits, then another commit after a working build.
-
-## Current loop
-
-- `ПРОСНУТЬСЯ` starts the run.
-- Each death unlocks memory and adds an entry to the death collection.
-- Some choices appear only after the player has learned from previous deaths.
-- The computer can launch nested copies of the game with degrading graphics modes.
-- Death and memory collection progress is saved in browser `localStorage`.
-- `Arts/wrong-world-menu-v2.png` is used for both the title screen and the first room scene.
-- Music cues are mapped by scene: boot menu, main game loop, window death, regular deaths, and victory.
-
-
-## Web / NPM direction
-
-Use npm for the existing React/Vite prototype:
-
-```powershell
-npm install
-npm run dev
-npm run build
-```
-
-The title screen now presents two in-app modes:
-
-- **Wrong World** — the original branching text adventure.
-- **Android Runner MVP** — the mobile-first portrait runner prototype.
-
-## Android direction
-
-Android packaging is prepared through Capacitor in `capacitor.config.ts` with:
-
-- app id: `com.kotlew89.wrongworld`
-- app name: `Wrong World`
-- web output: `dist`
-
-Recommended local setup after registry access is available:
-
-```powershell
-npm run android:install
-npm run android:init
-npm run android:doctor
-npm run android:sync
-npm run android:build
-```
-
-The expected debug APK path after a successful Gradle build is:
-
-```text
-android/app/build/outputs/apk/debug/app-debug.apk
-```
-
-If npm returns `403 Forbidden` for `@capacitor/*`, fix registry/proxy/auth access and rerun `npm run android:install`. This environment blocked Capacitor package downloads, so `android/` and an APK may need to be generated locally. Full instructions are in `docs/android-build.md`.
-
-
-## GitHub Actions APK build
-
-If the local environment cannot download `@capacitor/android` because of `403 Forbidden`, use the CI workflow instead of treating the local machine as Android-ready:
-
-1. Push the branch to GitHub.
-2. Open **Actions** → **Android Debug APK**.
-3. Click **Run workflow** and choose the branch.
-4. Wait for the job to finish.
-5. Download the artifact named `wrong-world-debug-apk`; it contains `app-debug.apk`.
-
-To install the debug APK on an Android 15 phone:
-
-1. Copy `app-debug.apk` to the phone, or install through ADB:
-
-   ```powershell
-   adb install -r app-debug.apk
-   ```
-
-2. If installing from the phone file manager, allow installs from that source when Android prompts for permission.
-3. Open **Wrong World**. The same Android shell shows both internal modes: **Wrong World** and **Android Runner MVP**.
-
-The CI workflow is defined in `.github/workflows/android-debug-apk.yml` and builds the same Vite output through Capacitor.

@@ -6,6 +6,9 @@ const config: CapacitorConfig = {
   webDir: 'dist',
   bundledWebRuntime: false,
   backgroundColor: '#07060d',
+  server: {
+    androidScheme: 'https',
+  },
   android: {
     backgroundColor: '#07060d',
     webContentsDebuggingEnabled: true,

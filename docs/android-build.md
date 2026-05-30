@@ -1,153 +1,57 @@
-# Android build path
+# Android debug APK build
 
-This repository has two development directions that share the same source app:
+Android APK builds are handled by GitHub Actions because this local environment can return `403 Forbidden` when downloading `@capacitor/android`.
 
-1. **NPM/Web** — the regular Vite/React/PWA app.
-2. **Android** — the same Vite build packaged with Capacitor into one Android app shell.
+## Capacitor settings
 
-The Android shell is intended to expose both in-app modes from the title screen:
-
-- **Wrong World** — the original text adventure.
-- **Android Runner MVP** — the portrait absurd runner prototype.
-
-## Package manager
-
-Use **npm** only. The repository has `package-lock.json`; do not add Yarn or pnpm lockfiles.
-
-## Web commands
-
-```bash
-npm install
-npm run dev
-npm run build
-```
-
-`npm run build` writes the web payload to `dist/`, which is the Capacitor `webDir`.
-
-## Capacitor configuration
-
-The root `capacitor.config.ts` is prepared for Capacitor:
+The app uses `capacitor.config.ts`:
 
 - `appId`: `com.kotlew89.wrongworld`
 - `appName`: `Wrong World`
 - `webDir`: `dist`
-- `bundledWebRuntime`: `false`
-- Android background color aligned with the app theme
+- `server.androidScheme`: `https`
 
-## First Android setup
+## CI workflow
 
-Run these commands after the npm registry is reachable from your environment:
-
-```bash
-npm run android:install
-npm run android:init
-npm run android:doctor
-```
-
-`android:install` installs:
-
-```bash
-npm install @capacitor/core @capacitor/cli @capacitor/android --save
-```
-
-`android:init` runs a production web build and then creates the native Android project:
-
-```bash
-npm run build
-npx --no-install cap add android
-```
-
-## Preflight / doctor
-
-Use the doctor script to check the registry, Capacitor dependencies, `android/`, Java, Android SDK environment variables, and Gradle wrapper status:
-
-```bash
-npm run android:doctor
-```
-
-It exits non-zero until the local machine has enough Android tooling to build an APK.
-
-## Syncing web changes into Android
-
-After changing React/Vite code:
-
-```bash
-npm run android:sync
-```
-
-This runs `npm run build` and then `npx --no-install cap sync android`.
-
-## Opening Android Studio
-
-```bash
-npm run android:open
-```
-
-This delegates to:
-
-```bash
-npx --no-install cap open android
-```
-
-## Building a debug APK
-
-After `android/` exists:
-
-```bash
-npm run android:build
-```
-
-The expected debug APK path is:
+Workflow file:
 
 ```text
-android/app/build/outputs/apk/debug/app-debug.apk
+.github/workflows/android-debug-apk.yml
 ```
 
-You can also run Gradle directly:
+It runs on manual dispatch and pushes to `main`, `master`, and `android`. The job:
+
+1. checks out the repository;
+2. sets up Node.js 20 with npm cache;
+3. runs `npm install`;
+4. runs `npm run build`;
+5. ensures `@capacitor/core`, `@capacitor/cli`, and `@capacitor/android` are installed;
+6. runs `npx cap add android` when `android/` is absent;
+7. runs `npx cap sync android`;
+8. sets up JDK 17 and Android SDK;
+9. runs `chmod +x gradlew && ./gradlew assembleDebug` in `android/`;
+10. uploads `android/app/build/outputs/apk/debug/app-debug.apk` as the artifact `app-debug-apk`.
+
+## Manual GitHub run
+
+1. Open **Actions** in GitHub.
+2. Select **Android Debug APK**.
+3. Click **Run workflow**.
+4. Download **app-debug-apk** from the completed run.
+5. Install `app-debug.apk` with `adb install -r app-debug.apk` or from the phone file manager.
+
+## Local commands when registry is available
+
+If your local machine can download Capacitor packages and has Android SDK/JDK installed, the equivalent local commands are:
 
 ```bash
+npm install
+npm run build
+npx cap add android
+npx cap sync android
 cd android
+chmod +x gradlew
 ./gradlew assembleDebug
 ```
 
-## Portrait/fullscreen notes
-
-The web app is already mobile-first for the runner mode:
-
-- the PWA manifest requests `orientation: "portrait"` and `display: "fullscreen"`;
-- the HTML viewport uses `viewport-fit=cover` for safe-area screens;
-- runner CSS disables page gestures inside the game area with `touch-action: none`;
-- both modes remain available inside the same Android app shell.
-
-After `npx --no-install cap add android` succeeds, verify the generated Android project and, if needed, set `android:screenOrientation="portrait"` on `MainActivity` in `android/app/src/main/AndroidManifest.xml`. App icons can stay as generated placeholders for MVP; replace them in a later polish pass.
-
-## If the registry blocks Capacitor
-
-In this environment, npm returned `403 Forbidden` while trying to fetch Capacitor packages. If that happens locally:
-
-1. Check registry/auth/proxy settings:
-
-   ```bash
-   npm config get registry
-   npm whoami
-   ```
-
-2. Retry the install when registry access is fixed:
-
-   ```bash
-   npm run android:install
-   npm run android:init
-   npm run android:sync
-   npm run android:doctor
-   ```
-
-3. Do not claim an APK is built until `npx --no-install cap sync android` and `./gradlew assembleDebug` have actually succeeded.
-
-## Phase 2 option: separate APKs/flavors
-
-The MVP path is one APK with two internal modes. If separate artifacts become useful later, add Android product flavors after the base `android/` project exists, for example:
-
-- `wrongWorld` flavor opens the text adventure by default;
-- `runner` flavor opens the runner by default.
-
-Do this only after the single-APK Capacitor path is stable.
+Do not treat local Android as ready until `android/app/build/outputs/apk/debug/app-debug.apk` exists.
