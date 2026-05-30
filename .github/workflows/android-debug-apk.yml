@@ -36,9 +36,9 @@ jobs:
       - name: Sync Web Assets to Native Android
         run: npx cap sync android
 
-      - name: Force Safe BouncyCastle Version
+      - name: Upgrade Gradle Wrapper to 8.5
         run: |
-          echo "allprojects { configurations.all { resolutionStrategy { force 'org.bouncycastle:bcprov-jdk18on:1.78.1' } } }" >> android/build.gradle
+          sed -i 's/gradle-8.2.1/gradle-8.5/g' android/gradle/wrapper/gradle-wrapper.properties
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
