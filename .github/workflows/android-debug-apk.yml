@@ -45,6 +45,11 @@ jobs:
           sed -i 's/compileSdkVersion = [0-9]*/compileSdkVersion = 35/g' android/variables.gradle
           sed -i 's/targetSdkVersion = [0-9]*/targetSdkVersion = 35/g' android/variables.gradle
 
+      - name: Exclude duplicate Kotlin modules
+        run: |
+          echo "subprojects { configurations.all { exclude group: 'org.jetbrains.kotlin', module: 'kotlin-stdlib-jdk8' } }" >> android/build.gradle
+          echo "subprojects { configurations.all { exclude group: 'org.jetbrains.kotlin', module: 'kotlin-stdlib-jdk7' } }" >> android/build.gradle
+
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
