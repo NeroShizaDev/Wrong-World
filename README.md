@@ -68,3 +68,27 @@ android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
 If npm returns `403 Forbidden` for `@capacitor/*`, fix registry/proxy/auth access and rerun `npm run android:install`. This environment blocked Capacitor package downloads, so `android/` and an APK may need to be generated locally. Full instructions are in `docs/android-build.md`.
+
+
+## GitHub Actions APK build
+
+If the local environment cannot download `@capacitor/android` because of `403 Forbidden`, use the CI workflow instead of treating the local machine as Android-ready:
+
+1. Push the branch to GitHub.
+2. Open **Actions** → **Android Debug APK**.
+3. Click **Run workflow** and choose the branch.
+4. Wait for the job to finish.
+5. Download the artifact named `wrong-world-debug-apk`; it contains `app-debug.apk`.
+
+To install the debug APK on an Android 15 phone:
+
+1. Copy `app-debug.apk` to the phone, or install through ADB:
+
+   ```powershell
+   adb install -r app-debug.apk
+   ```
+
+2. If installing from the phone file manager, allow installs from that source when Android prompts for permission.
+3. Open **Wrong World**. The same Android shell shows both internal modes: **Wrong World** and **Android Runner MVP**.
+
+The CI workflow is defined in `.github/workflows/android-debug-apk.yml` and builds the same Vite output through Capacitor.
