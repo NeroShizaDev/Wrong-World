@@ -7,6 +7,7 @@ import deathTheme from "../Music/NeroShizaDev - Pinned Under Glass.mp3";
 import snapFx from "../Music/NeroShizaDev - Pew Error Snap.mp3";
 import victoryTheme from "../Music/NeroShizaDev - Стул на закате.mp3";
 import menuTheme from "../Music/NeroShizaDev - Wrong World Boot Theme.mp3";
+import { RunnerGame } from "./RunnerGame";
 
 const DEATHS = {
   0: {
@@ -855,6 +856,7 @@ const ENDINGS: Record<EndingId, { title: string; icon: string; desc: string }> =
 
 export default function App() {
   const [started, setStarted] = useState(false);
+  const [runnerStarted, setRunnerStarted] = useState(false);
   const [deaths, setDeaths] = useState<Set<DeathId>>(loadDeathSet);
   const [memoryFlags, setMemoryFlags] = useState<Set<MemoryKey>>(loadMemorySet);
   const [showCollection, setShowCollection] = useState(false);
@@ -939,13 +941,23 @@ export default function App() {
 
   const handleStart = useCallback(() => {
     setShowCollection(false);
+    setRunnerStarted(false);
     setStarted(true);
+    playMusic("main", true);
+  }, [playMusic]);
+
+  const handleRunnerStart = useCallback(() => {
+    setShowCollection(false);
+    setStarted(false);
+    setEnding(null);
+    setRunnerStarted(true);
     playMusic("main", true);
   }, [playMusic]);
 
   const handleBackToMenu = useCallback(() => {
     setShowCollection(false);
     setStarted(false);
+    setRunnerStarted(false);
     setEnding(null);
     playMusic("menu", true);
   }, [playMusic]);
@@ -966,6 +978,7 @@ export default function App() {
     setMemoryFlags(new Set());
     setEnding(null);
     setStarted(false);
+    setRunnerStarted(false);
     setShowCollection(false);
     playMusic("menu", true);
   }, [playMusic]);
@@ -1000,6 +1013,10 @@ export default function App() {
     );
   }
 
+  if (runnerStarted) {
+    return <RunnerGame onExit={handleBackToMenu} />;
+  }
+
   if (!started) {
     return (
       <main className="title-screen" style={{ backgroundImage: `url(${menuArt})` }}>
@@ -1012,8 +1029,11 @@ export default function App() {
             <br />
             Мир решил, что это ошибка.
           </p>
-          <button type="button" className="gold-button" onClick={handleStart}>
-            ПРОСНУТЬСЯ
+          <button type="button" className="gold-button" onClick={handleRunnerStart}>
+            ANDROID РАННЕР MVP
+          </button>
+          <button type="button" className="danger-button title-card__secondary" onClick={handleStart}>
+            СТАРЫЙ WRONG WORLD
           </button>
         </section>
       </main>

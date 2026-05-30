@@ -1,0 +1,11 @@
+{
+  "name": "Wrong World: Дичь Идёт",
+  "short_name": "Дичь Идёт",
+  "description": "Android portrait runner MVP built inside the Wrong World web app.",
+  "start_url": "/",
+  "display": "fullscreen",
+  "orientation": "portrait",
+  "background_color": "#07060d",
+  "theme_color": "#5d2dff",
+  "icons": []
+}

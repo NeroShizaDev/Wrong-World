@@ -26,3 +26,17 @@ npm run build
 - Death and memory collection progress is saved in browser `localStorage`.
 - `Arts/wrong-world-menu-v2.png` is used for both the title screen and the first room scene.
 - Music cues are mapped by scene: boot menu, main game loop, window death, regular deaths, and victory.
+
+
+## Android runner MVP
+
+The default title screen now includes **ANDROID РАННЕР MVP**. This launches the mobile-first portrait runner directly inside the existing React app instead of using a separate Unity prototype folder.
+
+Current MVP gameplay:
+
+- one-finger left/right drag controls tuned for Android portrait screens;
+- automatic shooting, squad count, shield, damage/fire-rate boosts, rockets and freeze gates;
+- tourists, Petrovich enemies, babushkas, Petrovich squads and a final boss;
+- win/lose overlay and fullscreen PWA manifest with portrait orientation.
+
+For Android packaging, the app is ready as a portrait PWA/TWA target. Capacitor dependencies were not added because the registry blocked `@capacitor/android` in this environment; use the built `dist/` folder as the web payload when native Android tooling is available.
