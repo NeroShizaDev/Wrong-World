@@ -476,7 +476,7 @@ static void show_ending(void)
         draw_codes(ww_string(ending->desc) + lines[row].start, lines[row].length, LEFT, 10 + row, PAL_TEXT);
     }
     draw_string(WW_UI_ENDING_CONTINUE, LEFT, 22, PAL_ACCENT);
-    draw_string(WW_UI_ENDING_NEW_GAME, LEFT, 24, PAL_ACCENT);
+    draw_string(WW_UI_ENDING_RESET, LEFT, 24, PAL_ACCENT);
 }
 
 static void handle_ending(u16 keys)
