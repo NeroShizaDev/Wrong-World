@@ -24,6 +24,11 @@ button {
   letter-spacing: 0;
 }
 
+/* Скрытая игра остаётся смонтированной (коллекция не сбрасывает жизнь), но не показывается. */
+[hidden] {
+  display: none !important;
+}
+
 button:focus-visible {
   outline: 2px solid #ffdd57;
   outline-offset: 2px;
@@ -271,6 +276,27 @@ button:focus-visible {
   max-height: 76vh;
   margin: 0 auto;
   overflow-y: auto;
+}
+
+.collection-heading {
+  margin: 4px 0 10px;
+  color: #c4a35a;
+  font-size: 0.95rem;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+}
+
+.collection-heading:not(:first-child) {
+  margin-top: 20px;
+}
+
+.ending-entry {
+  border-left-color: #ffdd57;
+  background: rgba(255, 221, 87, 0.06);
+}
+
+.ending-entry .death-card__desc {
+  white-space: pre-line;
 }
 
 .death-card,

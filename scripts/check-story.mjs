@@ -97,7 +97,7 @@ for (const [flag, where] of requiredRun) if (!grantedRun.has(flag)) errors.push(
 // умирает, запоминает и пробует снова — пока память не перестанет расти.
 function exploreLife(memory) {
   const deaths = new Map();
-  let won = false;
+  const won = new Set();
   const seen = new Set();
   const queue = [
     { scene: START_SCENE, run: new Set(), mem: new Set(memory), depth: 0 },
@@ -126,7 +126,7 @@ function exploreLife(memory) {
     if (state.depth === 0 && variant.idle !== false && choices.length) choices.push({ to: IDLE_SCENE });
 
     for (const choice of choices) {
-      if (choice.action === "win") won = true;
+      if (choice.action === "win") won.add(choice.ending);
       else if (choice.action === "launch") {
         queue.push(
           state.depth >= MAX_LAYER_DEPTH
@@ -143,10 +143,10 @@ function exploreLife(memory) {
 
 let memory = new Set();
 const reachedDeaths = new Set();
-let winLife = null;
+const winLife = new Map();
 for (let life = 1; life <= 40; life += 1) {
   const { deaths, won } = exploreLife(memory);
-  if (won && winLife === null) winLife = life;
+  for (const ending of won) if (!winLife.has(ending)) winLife.set(ending, life);
   const next = new Set(memory);
   for (const [id, mem] of deaths) {
     reachedDeaths.add(id);
@@ -160,7 +160,9 @@ for (let life = 1; life <= 40; life += 1) {
 for (const id of deathIds) {
   if (usedDeaths.has(id) && !reachedDeaths.has(id)) errors.push(`смерть #${id} «${DEATHS[id].name}» недостижима с учётом условий`);
 }
-if (winLife === null) errors.push("побег недостижим с учётом условий");
+for (const ending of Object.keys(ENDINGS)) {
+  if (!winLife.has(ending)) errors.push(`концовка "${ending}" недостижима с учётом условий`);
+}
 
 if (errors.length) {
   console.error(`Сюжет сломан (${errors.length}):\n- ${errors.join("\n- ")}`);
@@ -168,6 +170,6 @@ if (errors.length) {
 }
 
 console.log(
-  `Сюжет связан: ${sceneIds.size} сцен, ${reachedDeaths.size}/${deathIds.length} смертей достижимы, ` +
-    `побег открывается на уровне знаний ${winLife}.`,
+  `Сюжет связан. Сцен: ${sceneIds.size}, достижимых смертей: ${reachedDeaths.size}/${deathIds.length}, ` +
+    `концовки открываются на уровне знаний: ${[...winLife].map(([ending, life]) => `${ending} — ${life}`).join(", ")}.`,
 );
