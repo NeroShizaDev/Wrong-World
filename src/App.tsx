@@ -617,6 +617,10 @@ export default function App() {
 
   if (ending) {
     const currentEnding = ENDINGS[ending];
+    // «Дичь идёт» открывается, только когда собраны все смерти и все концовки.
+    const collectionComplete =
+      Object.keys(DEATHS).every((id) => deaths.has(Number(id) as DeathId)) &&
+      (Object.keys(ENDINGS) as EndingId[]).every((id) => endings.has(id));
 
     return (
       <main className="ending-screen">
@@ -624,6 +628,13 @@ export default function App() {
           <div className="ending-icon">{currentEnding.icon}</div>
           <h1>{currentEnding.title}</h1>
           <p>{currentEnding.desc}</p>
+          {collectionComplete && (
+            <p className="ending-unlock">
+              💀 {TOTAL_DEATHS} / {TOTAL_DEATHS} · 🌅 {TOTAL_ENDINGS} / {TOTAL_ENDINGS}
+              <br />
+              Коллекция собрана. Теперь «Новая игра» — правда новая игра.
+            </p>
+          )}
           <div className="ending-actions">
             <button
               type="button"
@@ -636,8 +647,13 @@ export default function App() {
             >
               ИГРАТЬ ДАЛЬШЕ
             </button>
+            {collectionComplete && (
+              <button type="button" className="gold-button new-game-button" onClick={handleRunnerStart}>
+                НОВАЯ ИГРА
+              </button>
+            )}
             <button type="button" className="danger-button" onClick={handleReset}>
-              НОВАЯ ИГРА
+              СБРОС
             </button>
           </div>
         </div>

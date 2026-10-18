@@ -370,6 +370,23 @@ button:focus-visible {
   width: auto;
 }
 
+.ending-card .ending-unlock {
+  color: #37ff8b;
+  font-family: "Courier New", monospace;
+  font-size: 0.9rem;
+}
+
+.ending-actions .new-game-button {
+  border-color: #37ff8b;
+  color: #37ff8b;
+}
+
+.ending-actions .new-game-button:hover {
+  border-color: #8dffbe;
+  background: rgba(55, 255, 139, 0.1);
+  color: #8dffbe;
+}
+
 /* На ПК игра тоже помещается в окно: слева картинка и лог, справа кнопки. */
 @media (min-width: 701px) {
   .wrong-world-shell {
