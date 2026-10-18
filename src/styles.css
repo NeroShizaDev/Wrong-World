@@ -344,24 +344,112 @@ button:focus-visible {
   width: auto;
 }
 
+/* На ПК игра тоже помещается в окно: слева картинка и лог, справа кнопки. */
+@media (min-width: 701px) {
+  .wrong-world-shell {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    min-height: 0;
+  }
+
+  .wrong-world-shell > .game-layer {
+    display: grid;
+    flex: 1;
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
+    grid-template-rows: auto minmax(0, 1fr);
+    column-gap: 20px;
+    width: min(1180px, 100%);
+    min-height: 0;
+  }
+
+  .wrong-world-shell > .game-layer > .scene-illustration {
+    grid-column: 1;
+    grid-row: 1;
+    max-height: 34vh;
+  }
+
+  .wrong-world-shell > .game-layer > .story-log {
+    grid-column: 1;
+    grid-row: 2;
+    min-height: 0;
+    max-height: none;
+  }
+
+  .wrong-world-shell > .game-layer > .choice-list {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    min-height: 0;
+    margin-top: 0;
+    overflow-y: auto;
+  }
+
+  .wrong-world-shell > .collection-panel,
+  .wrong-world-shell > .nested-layer {
+    flex: 1;
+    max-height: none;
+  }
+}
+
 @media (max-width: 700px) {
   .title-screen {
     justify-content: center;
     padding: 24px 16px;
   }
 
-  .game-topbar,
   .ending-actions {
     align-items: stretch;
     flex-direction: column;
   }
 
-  .topbar-actions {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+  /* На телефоне игра занимает ровно экран: картинка, лог и кнопки видны без прокрутки страницы. */
+  .wrong-world-shell {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    min-height: 0;
+    padding: 10px 12px;
   }
 
-  .story-log {
-    max-height: 58vh;
+  .game-topbar {
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+  }
+
+  .topbar-actions button {
+    min-height: 36px;
+    padding: 6px 12px;
+  }
+
+  .wrong-world-shell > .game-layer {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .wrong-world-shell > .game-layer > .scene-illustration {
+    flex-shrink: 0;
+    max-height: 16dvh;
+    margin-bottom: 10px;
+  }
+
+  .wrong-world-shell > .game-layer > .story-log {
+    flex: 1 1 0;
+    min-height: 5rem;
+    max-height: none;
+  }
+
+  .wrong-world-shell > .game-layer > .choice-list {
+    flex-shrink: 0;
+    max-height: 48dvh;
+    margin-top: 10px;
+    overflow-y: auto;
+  }
+
+  .wrong-world-shell > .collection-panel,
+  .wrong-world-shell > .nested-layer {
+    flex: 1;
+    max-height: none;
   }
 }
