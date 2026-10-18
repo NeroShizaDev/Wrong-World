@@ -617,7 +617,7 @@ export default function App() {
               ИГРАТЬ ДАЛЬШЕ
             </button>
             <button type="button" className="danger-button" onClick={handleReset}>
-              НОВАЯ ИГРА
+              СБРОС
             </button>
           </div>
         </div>
