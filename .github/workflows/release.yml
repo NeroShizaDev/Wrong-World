@@ -1,0 +1,117 @@
+name: Release
+
+# Релиз по тегу vX.Y.Z на main: установщик и portable для Windows собираются здесь,
+# APK и ROM берутся из последних успешных сборок веток android и sega.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Тег релиза, например v0.2.0
+        required: true
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+          lfs: true # арт и музыка в Git LFS
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check story connectivity
+        run: npm run check:story
+
+      - name: Build installer and portable exe
+        run: |
+          npm run build
+          npx electron-builder --win --publish never
+
+      - name: Upload Windows builds
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: release/*.exe
+          if-no-files-found: error
+
+  release:
+    needs: windows
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ inputs.tag || github.ref_name }}
+
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: Download Windows builds
+        uses: actions/download-artifact@v4
+        with:
+          name: windows
+          path: builds/windows
+
+      - name: Download APK and ROM built for the current branch heads
+        run: |
+          set -euo pipefail
+          fetch() {
+            local workflow="$1" branch="$2" artifact="$3" dir="$4"
+            local head run sha
+            head=$(gh api "repos/$GITHUB_REPOSITORY/branches/$branch" --jq .commit.sha)
+            run=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow "$workflow" --branch "$branch" --status success \
+              --limit 1 --json databaseId,headSha --jq '.[0] | "\(.databaseId) \(.headSha)"')
+            read -r id sha <<<"$run"
+            if [ -z "${id:-}" ] || [ "$sha" != "$head" ]; then
+              echo "::error::Нет успешной сборки «$workflow» для вершины ветки $branch ($head). Дождитесь её и перезапустите релиз."
+              exit 1
+            fi
+            gh run download "$id" --repo "$GITHUB_REPOSITORY" --name "$artifact" --dir "$dir"
+          }
+          fetch "Build Android Debug APK" android app-debug-apk builds/android
+          fetch "Build Sega Mega Drive ROM" sega wrong-world-megadrive-rom builds/sega
+
+      - name: Name the files
+        run: |
+          set -euo pipefail
+          version="${TAG#v}"
+          mkdir -p upload
+          cp "builds/windows/Wrong World Setup ${version}.exe" "upload/Wrong-World-Setup-${version}.exe"
+          cp "builds/windows/Wrong World ${version} Portable.exe" "upload/Wrong-World-${version}-Portable.exe"
+          cp builds/android/app-debug.apk "upload/Wrong-World-${version}.apk"
+          cp builds/sega/rom.bin "upload/Wrong-World-${version}-MegaDrive.bin"
+          ls -la upload
+
+      - name: Release notes from CHANGELOG.md
+        run: |
+          version="${TAG#v}"
+          awk -v version="$version" '
+            index($0, "## " version) == 1 { on = 1; next }
+            /^## / && on { exit }
+            on { print }
+          ' CHANGELOG.md > notes.md
+          if [ ! -s notes.md ]; then echo "Wrong World $TAG" > notes.md; fi
+          cat notes.md
+
+      - name: Publish release
+        run: |
+          gh release create "$TAG" upload/* --repo "$GITHUB_REPOSITORY" --title "Wrong World $TAG" \
+            --notes-file notes.md --verify-tag
