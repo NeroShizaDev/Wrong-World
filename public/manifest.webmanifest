@@ -1,0 +1,11 @@
+{
+  "name": "Wrong World",
+  "short_name": "Wrong World",
+  "description": "Текстовое приключение: ваша комната, только неправильная.",
+  "start_url": "/",
+  "display": "fullscreen",
+  "orientation": "portrait",
+  "background_color": "#07060d",
+  "theme_color": "#07060d",
+  "icons": []
+}
