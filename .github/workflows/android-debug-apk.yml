@@ -13,6 +13,15 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          lfs: true # Арт и музыка лежат в Git LFS, без этого в APK попадут 130-байтовые указатели
+
+      - name: Verify Git LFS assets
+        run: |
+          if git lfs ls-files | grep -E '^[0-9a-f]+ - '; then
+            echo "::error::Эти файлы остались указателями Git LFS, а не настоящими ассетами"
+            exit 1
+          fi
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -28,7 +37,9 @@ jobs:
           npm install @capacitor/core @capacitor/cli @capacitor/android --save-dev
 
       - name: Build Web Application (React/Vite)
-        run: npm run build
+        run: |
+          npm run build
+          ls -l dist/assets # Размеры ассетов в логе: png и mp3 должны весить мегабайты
 
       - name: Initialize Capacitor Android
         run: |
