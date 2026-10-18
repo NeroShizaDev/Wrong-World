@@ -1,31 +1,61 @@
 # Wrong World
 
-Wrong World is a small React game prototype built with Vite. It currently runs as a branching text adventure about dying, remembering why you died, and using that knowledge to break out of a bugged isekai room.
+Текстовое приключение в жанре магического бытового реализма. Это наш обычный мир и ваша собственная комната — только за ночь в неё пришла магия, и всё стало неправильным: в розетке 220 вольт манны, в чайнике живёт саламандра, компьютерный стул оказался мимиком.
 
-## Commands
+Каждая смерть заканчивается будильником в 7:00 и новой записью в коллекции. Память о прошлых смертях открывает новые выборы (⚡). Цель — выбраться из комнаты живым.
+
+## Платформы и ветки
+
+| Ветка | Платформа | Что получается |
+|---|---|---|
+| `main` | Windows (PC) | установщик `Wrong World Setup *.exe` и portable-версия |
+| `android` | Android | debug APK через GitHub Actions (Capacitor), см. `docs/android-build.md` в ветке |
+| `sega` | Sega Mega Drive / Genesis | ROM через SGDK, см. `sega/README.md` в ветке |
+
+Общая игра (сюжет и движок) живёт в `main`. Платформенные ветки получают её через `git merge main` и добавляют только свою упаковку — поэтому сюжет правится один раз, в `main`.
+
+## Сюжет
+
+- `src/story.ts` — весь сюжет в виде данных: смерти, сцены, варианты сцен, выборы, условия и концовка. Импортов нет, поэтому файл читают и игра, и скрипты.
+- `src/App.tsx` — веб-движок: показывает сцены, хранит память между жизнями, «игру в игре» с деградацией графики, музыку и коллекцию смертей.
+- `npm run check:story` — проверка связности: битые переходы, недостижимые сцены и смерти, флаги, которые требуются, но нигде не выдаются, и симуляция «жизнь за жизнью», которая доказывает, что все смерти и побег достижимы с нуля. Нужен Node 22.18+.
+
+Как устроена сцена:
+
+- `text` — текст; `{lastDeath}` подставляет название прошлой смерти героя.
+- `choices` — кнопки; `to` ведёт в другую сцену, `action` запускает игру в игре (`launch`), выходит из неё (`exit`) или завершает игру (`win`).
+- `if` — условие: `mem`/`noMem` (память между жизнями), `run`/`noRun` (флаги текущей жизни), `minDepth`/`maxDepth` (уровень игры в игре). Выбор, открытый памятью (`mem`), показывается как озарение ⚡.
+- `variants` — несколько версий сцены, берётся первая подходящая.
+- `death` — сцена-смерть; `set`/`unset` — флаги жизни; `remember` — память, которая останется после смерти.
+
+## PC (Windows)
 
 ```powershell
 npm install
-npm run dev
-npm run build
-npm run build:exe
+npm run dev              # игра в браузере
+npm run desktop          # игра в окне Electron
+npm run build:installer  # установщик
+npm run build:exe        # установщик + portable
 ```
 
-The Windows portable executable is generated at `release/Wrong World 0.1.0.exe`.
+Готовые файлы появляются в `release/`:
 
-## Project start rules
+- `Wrong World Setup 0.1.0.exe` — установщик: выбор папки, ярлыки на рабочем столе и в «Пуске», удаление через «Приложения». Сохранения при удалении не стираются.
+- `Wrong World 0.1.0 Portable.exe` — запуск без установки.
 
-- Keep source, config, docs, and small text files in normal Git.
-- Keep large binary assets in Git LFS: art, audio, video, layered source files.
-- Do not commit generated folders like `node_modules/` or `dist/`.
-- Make a commit before large agent edits, then another commit after a working build.
+В игре F11 включает полноэкранный режим. Сохранения (коллекция смертей и память) хранятся в профиле пользователя.
 
-## Current loop
+Если сборка падает на `winCodeSign` с ошибкой `Cannot create symbolic link`, включите режим разработчика Windows или распакуйте архив из кеша electron-builder без macOS-файлов:
 
-- `ПРОСНУТЬСЯ` starts the run.
-- Each death unlocks memory and adds an entry to the death collection.
-- Some choices appear only after the player has learned from previous deaths.
-- The computer can launch nested copies of the game with degrading graphics modes.
-- Death and memory collection progress is saved in browser `localStorage`.
-- `Arts/wrong-world-menu-v2.png` is used for both the title screen and the first room scene.
-- Music cues are mapped by scene: boot menu, main game loop, window death, regular deaths, and victory.
+```powershell
+$cache = "$env:LOCALAPPDATA\electron-builder\Cache\winCodeSign"
+$archive = Get-ChildItem "$cache\*.7z" | Select-Object -First 1
+node_modules\7zip-bin\win\x64\7za.exe x -y $archive.FullName "-o$cache\winCodeSign-2.6.0" "-xr!darwin"
+```
+
+## Правила проекта
+
+- Исходники, конфиги, документация и небольшие текстовые файлы — в обычном Git.
+- Крупные бинарные ассеты — в Git LFS: арт, аудио, видео, слоёные исходники.
+- Не коммитить сгенерированные папки: `node_modules/`, `dist/`, `release/`.
+- Делать коммит перед крупными правками агентом и ещё один — после рабочей сборки.
