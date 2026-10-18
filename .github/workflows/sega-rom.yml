@@ -1,0 +1,36 @@
+name: Build Sega Mega Drive ROM
+
+on:
+  workflow_dispatch: # Ручной запуск: Actions → Build Sega Mega Drive ROM → Run workflow
+  push:
+    branches:
+      - sega
+
+jobs:
+  rom:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Check that Mega Drive data matches src/story.ts
+        run: node sega/tools/export-story.mjs --check
+
+      - name: Build ROM with SGDK 2.11
+        run: |
+          # Контейнер работает от непривилегированного пользователя и пишет в sega/out и sega/src/boot.
+          chmod -R a+rwX sega
+          docker run --rm -v "$PWD/sega:/m68k" registry.gitlab.com/doragasu/docker-sgdk:v2.11
+
+      - name: Upload ROM
+        uses: actions/upload-artifact@v4
+        with:
+          name: wrong-world-megadrive-rom
+          path: sega/out/rom.bin
+          if-no-files-found: error
