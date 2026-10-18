@@ -2,11 +2,19 @@
   "name": "wrong-world",
   "private": true,
   "version": "0.1.0",
+  "description": "Techno-magic death-collection game: your own room, but wrong.",
+  "author": "NeroShizaDev",
+  "main": "electron/main.cjs",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "check:story": "node scripts/check-story.mjs",
     "preview": "vite preview",
+    "desktop": "npm run build && electron .",
+    "build:exe": "npm run build && electron-builder --win",
+    "build:installer": "npm run build && electron-builder --win nsis",
+    "build:portable": "npm run build && electron-builder --win portable",
     "android:sync": "npm run build && npx cap sync android",
     "android:open": "npx cap open android",
     "android:build": "npm run android:sync && cd android && ./gradlew assembleDebug"
@@ -22,7 +30,53 @@
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
+    "electron": "^42.2.0",
+    "electron-builder": "^26.8.1",
     "typescript": "^5.9.3",
     "vite": "^8.0.10"
+  },
+  "build": {
+    "appId": "dev.neroshiza.wrongworld",
+    "productName": "Wrong World",
+    "copyright": "© 2026 NeroShizaDev",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "win": {
+      "icon": "electron/icon.ico",
+      "signAndEditExecutable": true,
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Wrong World",
+      "uninstallDisplayName": "Wrong World",
+      "installerIcon": "electron/icon.ico",
+      "uninstallerIcon": "electron/icon.ico",
+      "installerHeaderIcon": "electron/icon.ico",
+      "installerLanguages": [
+        "ru_RU",
+        "en_US"
+      ],
+      "language": "1049",
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false,
+      "artifactName": "Wrong World Setup ${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "Wrong World ${version} Portable.${ext}"
+    }
   }
 }

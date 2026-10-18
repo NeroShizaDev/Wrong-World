@@ -7,103 +7,35 @@ import deathTheme from "../Music/NeroShizaDev - Pinned Under Glass.mp3";
 import snapFx from "../Music/NeroShizaDev - Pew Error Snap.mp3";
 import victoryTheme from "../Music/NeroShizaDev - Стул на закате.mp3";
 import menuTheme from "../Music/NeroShizaDev - Wrong World Boot Theme.mp3";
+import {
+  DEATHS,
+  DIED_FLAG,
+  ENDINGS,
+  IDLE_CHOICE_TEXT,
+  IDLE_SCENE,
+  MAX_LAYER_DEPTH,
+  NESTED_EXIT_SCENE,
+  NESTED_START_SCENE,
+  RESPAWN_SCENE,
+  SCENES,
+  START_SCENE,
+  TOO_DEEP_SCENE,
+  checkCondition,
+  isInsight,
+  resolveScene,
+  sceneText,
+} from "./story";
+import type { ChoiceAction, DeathId, EndingId, MemoryKey, StoryContext } from "./story";
 import { RunnerGame } from "./RunnerGame";
 
-const DEATHS = {
-  0: {
-    name: "Одеяло-убийца",
-    desc: "Вы резко встали, запутались в одеяле и свернули себе шею. Классика.",
-  },
-  1: {
-    name: "Гравитация не друг",
-    desc: "Пол оказался на 5 см ниже, чем вы ожидали. Лицо — пол. Пол победил.",
-  },
-  2: {
-    name: "Шкаф познания",
-    desc: "Том «1001 способ выжить» весил 40 кг. Прямо в голову.",
-  },
-  3: {
-    name: "Электрическая медитация",
-    desc: "50 000 ман прошло через ваше тело. Вам не понравилось.",
-  },
-  4: {
-    name: "Файрбол из принтера",
-    desc: "Вы нажали «Обновить позже». Принтер выстрелил файрболом.",
-  },
-  5: { name: "Рекурсивный коллапс", desc: "Stack overflow, но буквально." },
-  6: {
-    name: "Зеркало правды",
-    desc: "Вы увидели своё настоящее лицо в этом мире. Сердце остановилось.",
-  },
-  7: {
-    name: "Стул-мимик",
-    desc: "Стул оказался мимиком. В этом мире вся мебель — потенциальный хищник.",
-  },
-  8: {
-    name: "Слишком глубоко в коде",
-    desc: "Видеокарта реальности сгорела. Вы стали NaN.",
-  },
-  9: {
-    name: "Окно в никуда",
-    desc: "За окном — ещё один вы. Вы оба закричали. Стёкла разлетелись от резонанса.",
-  },
-  10: {
-    name: "Тапочки-портал",
-    desc: "Левый тапок — Антарктида. Правый — Солнце. Вы разорвались географически.",
-  },
-  11: {
-    name: "Пыль веков",
-    desc: "Пыль оказалась прахом предыдущего игрока. Проклятие активировано.",
-  },
-  12: {
-    name: "Alt+F4 реальности",
-    desc: "Вы локальная аномалия. Закрылась не игра. Закрылись вы.",
-  },
-  13: {
-    name: "Умный чайник",
-    desc: "IoT-чайник решил, что вы — вода. Он вскипятил вас.",
-  },
-  14: {
-    name: "Сборщик мусора",
-    desc: "Вы стояли на месте слишком долго. Reality Engine очистил вас из кэша.",
-  },
-  15: {
-    name: "Обновление Окон",
-    desc: "Окно обновилось до Window 11. Синий экран осыпался вам в лицо стеклом.",
-  },
-  16: {
-    name: "Переполнение инвентаря",
-    desc: "Вы положили кактус в карман. Лимит веса → гравитационная сингулярность.",
-  },
-  17: {
-    name: "Текстуры не завезли",
-    desc: "За дверью не отрендерили коридор. Вы упали в синюю пустоту.",
-  },
-  18: { name: "Античит", desc: "Античит превратил вас в лягушку. Лягушка не выжила." },
-  19: {
-    name: "Прокрастинация",
-    desc: "Вы лежали так долго, что умерли от голода и жажды. Кактус наблюдал.",
-  },
-  20: { name: "Кактус-предатель", desc: "Просто кактус. Ядовитый." },
-  21: { name: "Чай с секретом", desc: "Чай оказался зельем полиморфа. Вы стали чайником." },
-  22: { name: "Дверь-ловушка", desc: "Курьер с посылкой. В посылке — файрбол." },
-  23: {
-    name: "Битва титанов",
-    desc: "Одеяло и мимик убили друг друга. Взрывная волна убила и вас.",
-  },
-  24: { name: "Критическое обновление", desc: "Компьютер обновил вас до версии 0.0.0." },
-  25: { name: "Стояние столбом", desc: "Reality Engine принял вас за баг и удалил." },
-} as const;
-
-type DeathId = keyof typeof DEATHS;
-type MemoryKey = DeathId | string;
-type RunFlag = string;
-type EndingId = "survivor";
 type MusicTrack = "menu" | "main" | "death" | "window" | "victory";
 
-type Choice = {
+type VisibleChoice = {
   text: string;
-  action: string;
+  to?: string;
+  action?: ChoiceAction | "wake";
+  ending?: EndingId;
+  insight: boolean;
 };
 
 type GraphicsLevel = {
@@ -120,7 +52,6 @@ type GraphicsLevel = {
 };
 
 const TOTAL_DEATHS = Object.keys(DEATHS).length;
-const MAX_NESTING_DEPTH = 5;
 
 const MUSIC_TRACKS: Record<MusicTrack, { src: string; volume: number; loop: boolean }> = {
   menu: { src: menuTheme, volume: 0.34, loop: true },
@@ -224,6 +155,17 @@ function loadMemorySet() {
   }
 }
 
+function loadLastDeath(): DeathId | null {
+  try {
+    const raw = window.localStorage.getItem("wrong-world-last-death");
+    if (raw === null) return null;
+    const id = Number(raw);
+    return id in DEATHS ? (id as DeathId) : null;
+  } catch {
+    return null;
+  }
+}
+
 function DeathCard({ id, death }: { id: DeathId; death: (typeof DEATHS)[DeathId] }) {
   return (
     <article className="death-card">
@@ -237,500 +179,180 @@ function DeathCard({ id, death }: { id: DeathId; death: (typeof DEATHS)[DeathId]
 type GameLayerProps = {
   depth?: number;
   memory: Set<MemoryKey>;
+  lastDeath: DeathId | null;
   onDeath: (id: DeathId) => void;
   onMemory: (flag: MemoryKey) => void;
   onWin: (ending: EndingId) => void;
   onMusicCue?: (track: MusicTrack) => void;
-  onCollapse?: () => void;
+  onExit?: () => void;
+  onNestedDeath?: (id: DeathId, text: string) => void;
 };
+
+const DIVIDER = "═══════════════════════════";
 
 function GameLayer({
   depth = 0,
   memory,
+  lastDeath,
   onDeath,
   onMemory,
   onWin,
   onMusicCue,
-  onCollapse,
+  onExit,
+  onNestedDeath,
 }: GameLayerProps) {
-  const [text, setText] = useState("");
-  const [choices, setChoices] = useState<Choice[]>([]);
+  const [log, setLog] = useState("");
+  const [choices, setChoices] = useState<VisibleChoice[]>([]);
   const [nestedGame, setNestedGame] = useState(false);
-  const [lyingCount, setLyingCount] = useState(0);
-  const [, setRunState] = useState<Set<RunFlag>>(() => new Set());
-  const runStateRef = useRef<Set<RunFlag>>(new Set());
-  const textRef = useRef<HTMLDivElement | null>(null);
+  const runRef = useRef<Set<string>>(new Set());
+  const memoryRef = useRef<Set<MemoryKey>>(new Set(memory));
+  const lastDeathRef = useRef<DeathId | null>(lastDeath);
+  const startedRef = useRef(false);
+  const logRef = useRef<HTMLDivElement | null>(null);
 
   const style = GRAPHICS_LEVELS[Math.min(depth, GRAPHICS_LEVELS.length - 1)];
   const prefix = style.prefix;
-  const hasMem = useCallback((key: MemoryKey) => memory.has(key), [memory]);
-  const hasRun = useCallback((key: RunFlag) => runStateRef.current.has(key), []);
-  const addRunFlag = useCallback((flag: RunFlag) => {
-    const next = new Set(runStateRef.current);
-    next.add(flag);
-    runStateRef.current = next;
-    setRunState(next);
-  }, []);
-  const clearRunFlags = useCallback(() => {
-    const next = new Set<RunFlag>();
-    runStateRef.current = next;
-    setRunState(next);
-  }, []);
 
   useEffect(() => {
-    if (textRef.current) {
-      textRef.current.scrollTop = textRef.current.scrollHeight;
-    }
-  }, [text, choices]);
-
-  const go = useCallback(
-    (
-      newText: string,
-      newChoices: Choice[],
-      deathId: DeathId | null = null,
-      memFlag: MemoryKey | null = null,
-      runFlag: RunFlag | null = null,
-    ) => {
-      if (memFlag !== null) onMemory(memFlag);
-      if (runFlag !== null) {
-        addRunFlag(runFlag);
-      }
-
-      const processed = depth >= 2 ? corruptText(newText, depth) : newText;
-
-      if (deathId !== null) {
-        onDeath(deathId);
-        const death = DEATHS[deathId];
-
-        setText(
-          (current) =>
-            current +
-            "\n\n" +
-            prefix +
-            "═══════════════════════════\n" +
-            prefix +
-            "💀 СМЕРТЬ #" +
-            deathId +
-            ": " +
-            death.name +
-            "\n" +
-            prefix +
-            death.desc +
-            "\n" +
-            prefix +
-            "═══════════════════════════\n\n" +
-            prefix +
-            "Темнота. Холод. Знакомый потолок.",
-        );
-        clearRunFlags();
-        setChoices([{ text: "Встать (опять...)", action: "wake" }]);
-        setLyingCount(0);
-        return;
-      }
-
-      setText((current) => current + "\n\n" + prefix + processed);
-      const finalChoices = [...newChoices];
-
-      if (
-        newChoices.length > 0 &&
-        !newChoices.some(
-          (choice) =>
-            choice.action.includes("die") ||
-            choice.action === "stand_still" ||
-            choice.action === "wake",
-        )
-      ) {
-        finalChoices.push({ text: "Стоять столбом", action: "stand_still" });
-      }
-
-      setChoices(finalChoices);
-    },
-    [addRunFlag, clearRunFlags, depth, onDeath, onMemory, prefix],
-  );
+    for (const key of memory) memoryRef.current.add(key);
+  }, [memory]);
 
   useEffect(() => {
-    const intro =
-      depth === 0
-        ? `${style.descStyle}\n\nВы открываете глаза. Незнакомый потолок. Это точно не ваша квартира.\nЧастный дом. Одна комната. На столе — компьютер с руной. В углу — шкаф.\nПо улице проехала машина. За ней пролетел мужик на метле, матерясь на ПДД.`
-        : `${style.descStyle}\n\nНа экране — интерфейс игры внутри игры. Разрешение просело.${
-            depth >= 2 ? " Сильно." : ""
-          }${depth >= 3 ? " Это вообще буквы?" : ""}`;
-
-    setText(prefix + intro);
-
-    const initialHasMem = (key: MemoryKey) => memory.has(key);
-    const startingChoices =
-      depth === 0
-        ? [
-            { text: "Резко вскочить с кровати", action: "die0" },
-            { text: "Осторожно встать", action: "stand_slow" },
-            { text: "Лежать и ничего не делать", action: "lie_still" },
-            ...(initialHasMem(0) ? [{ text: "⚡ Сбросить одеяло на пол", action: "smart_wake" }] : []),
-          ]
-        : [
-            { text: "Подойти к компьютеру (в игре)", action: "computer_nested" },
-            { text: "Выйти (Оставь внутри игры)", action: "exit" },
-          ];
-
-    setChoices(startingChoices);
-  }, [depth, prefix, style.descStyle]);
-
-  const handleChoice = (action: string) => {
-    switch (action) {
-      case "wake": {
-        onMusicCue?.("main");
-        setLyingCount(0);
-        go("Вы лежите в кровати. Потолок знакомый. Одеяло подозрительно тёплое.", [
-          { text: "Резко вскочить", action: "die0" },
-          { text: "Осторожно встать", action: "stand_slow" },
-          { text: "Лежать и ничего не делать", action: "lie_still" },
-          { text: "Надеть тапочки не вставая", action: "die10" },
-          ...(hasMem(0) ? [{ text: "⚡ Сбросить одеяло на пол", action: "smart_wake" }] : []),
-        ]);
-        break;
-      }
-
-      case "lie_still": {
-        const nextCount = lyingCount + 1;
-        setLyingCount(nextCount);
-
-        if (nextCount === 1) {
-          go("Вы лежите. Потолок не меняется. Ничего не происходит. Кактус, кажется, моргнул.", [
-            { text: "Продолжать лежать", action: "lie_still" },
-            { text: "Ладно, встать", action: "stand_slow" },
-          ]);
-        } else if (nextCount === 2) {
-          go("Прошёл час. Или день. Время тут странное. Кактус смотрит с осуждением.", [
-            { text: "Продолжать лежать. Принципиально.", action: "lie_still" },
-            { text: "Может всё-таки встать?", action: "stand_slow" },
-          ]);
-        } else if (nextCount === 3) {
-          go(
-            "В животе урчит. Во рту сухо. Кактус пускает корни в вашу сторону.\n«Если не буду двигаться — мир забудет что я тут?»",
-            [
-              { text: "ЛЕЖАТЬ. ВО ЧТО БЫ ТО НИ СТАЛО.", action: "lie_still" },
-              { text: "Окей, встаю", action: "stand_slow" },
-            ],
-          );
-        } else {
-          go(
-            "Вы лежите уже... долго. Кактус дополз до края подоконника.\nТело решило: раз хозяин не кормит — работать оно тоже не будет.",
-            [],
-            19,
-          );
-        }
-        break;
-      }
-
-      case "smart_wake":
-        go(
-          "Вы берёте одеяло за уголок и швыряете на пол. Оно злобно шипит.\nТапочки обходите по дуге — опыт сын ошибок мёртвых.",
-          [
-            { text: "Подойти к компьютеру", action: "computer" },
-            { text: "Открыть шкаф", action: "wardrobe" },
-            { text: "Посмотреть в окно", action: "die9" },
-            { text: "Осмотреть комнату", action: "room" },
-            ...(hasMem("know_blanket") ? [{ text: "Подойти к двери", action: "door" }] : []),
-          ],
-          null,
-          "know_blanket",
-        );
-        break;
-
-      case "stand_slow":
-        go("Пол холодный, но не смертельный. ВЫ ВСТАЛИ!", [
-          { text: "Подойти к компьютеру", action: "computer" },
-          { text: "Открыть шкаф", action: "wardrobe" },
-          { text: "Посмотреть в окно", action: "die9" },
-          { text: "Осмотреть комнату", action: "room" },
-        ]);
-        break;
-
-      case "stand_still":
-        if (hasRun("stood_still_warning")) {
-          go("Вы стоите слишком убедительно. Reality Engine принял вас за неподвижный баг и нажал [Y].", [], 25);
-        } else {
-          go(
-            "Вы стоите. Не двигаетесь. Reality Engine: «Объект player_0 не отвечает. Удалить? [Y]»\nКурсор зависает над кнопкой. У вас есть примерно один шанс доказать, что вы живой.",
-            [
-              { text: "Медленно пошевелиться", action: "room" },
-              { text: "Продолжать стоять столбом", action: "stand_still" },
-            ],
-            null,
-            null,
-            "stood_still_warning",
-          );
-        }
-        break;
-
-      case "room":
-        go("Комната: деревянные стены, коврик, компьютер, шкаф с вивернами, кактус. Кактус смотрит.", [
-          { text: "Подойти к компьютеру", action: "computer" },
-          { text: "Открыть шкаф", action: "wardrobe" },
-          { text: "Поговорить с кактусом", action: "cactus" },
-          { text: "Посмотреть в окно", action: "die9" },
-          ...(hasMem("know_blanket") ? [{ text: "Подойти к двери", action: "door" }] : []),
-        ]);
-        break;
-
-      case "door":
-        if (hasRun("tamed_mimic")) {
-          go(
-            "У вас есть приручённый стул-мимик! Запрыгиваете верхом.\nМимик пробивает дверь, рендер-барьер, и уносит вас в закат.\n\n═══ ВЫ СБЕЖАЛИ ═══",
-            [],
-          );
-          onWin("survivor");
-        } else {
-          go("Вы подходите к двери. Открываете её... За дверью — ничего. Синяя пустота. Не отрендерили.", [], 17);
-        }
-        break;
-
-      case "cactus":
-        go("«Привет.» Кактус не отвечает. ...но МОРГНУЛ.", [
-          { text: "Потрогать кактус", action: "cactus_touch" },
-          { text: "Отойти. Медленно.", action: "room" },
-          { text: "Положить кактус в карман", action: "die16" },
-        ]);
-        break;
-
-      case "cactus_touch":
-        if (Math.random() < 0.3 && !hasMem(20)) {
-          go("Кактус тёплый... и ядовитый. Не фамильяр. Просто злой кактус.", [], 20);
-        } else {
-          go(
-            "Кактус тёплый. МУРЧИТ! Вы берете его с собой. Он тычется колючками. Больно, но мило.",
-            [
-              { text: "К компьютеру (с кактусом)", action: "computer" },
-              { text: "Открыть шкаф", action: "wardrobe" },
-            ],
-            null,
-            null,
-            "has_cactus",
-          );
-        }
-        break;
-
-      case "wardrobe":
-        go(
-          "Шкаф: мантия (прожжена), кольчуга (+2 защита, -∞ комфорт),\nфутболка «Я ПЕРЕЖИЛ ИСЕКАЙ», книга 40 кг.",
-          [
-            { text: "Взять книгу", action: "die2" },
-            { text: "Надеть мантию", action: "robe" },
-            ...(hasMem(2) ? [{ text: "⚡ Достать книгу ДВУМЯ руками", action: "book_careful" }] : []),
-            { text: "Закрыть, к компьютеру", action: "computer" },
-          ],
-        );
-        break;
-
-      case "robe":
-        go("Мантия пахнет озоном. Записка: «Не включай комп мокрыми руками. — предыдущий жилец»", [
-          { text: "К компьютеру", action: "computer" },
-          { text: "Осмотреть комнату", action: "room" },
-        ], null, null, "has_robe");
-        break;
-
-      case "book_careful":
-        go(
-          "Вы достаете книгу. Правило №1: «Не берите одной рукой.»\n№2: «Не сидите на стульях.»\n№404: «Вы слишком далеко в коде. Если вложенность пугает — ВЕРНИТЕ СМЕРТЬ. Не запускайте игру внутри игры глубоко.»",
-          [
-            { text: "К компьютеру", action: "computer" },
-            { text: "Осмотреть комнату", action: "room" },
-          ],
-          null,
-          "know_book",
-        );
-        break;
-
-      case "computer": {
-        const computerChoices: Choice[] = [
-          { text: "Сесть на стул", action: "sit_chair" },
-          { text: "Включить комп стоя", action: "pc_standing" },
-          { text: "Подуть на системник", action: "die11" },
-        ];
-
-        if (hasMem(7) && hasMem(0)) {
-          computerChoices.push({ text: "⚡ Бросить одеяло на стул-мимик", action: "tame_chair" });
-        }
-
-        go("Компьютер с руной. Caps Lock = кнопка с черепом. Рядом — стул. Крутится.", computerChoices);
-        break;
-      }
-
-      case "sit_chair":
-        if (hasRun("has_cactus")) {
-          go(
-            "Кактус на вашем плече угрожающе шипит! Стул-мимик испуганно скулит и превращается в обычную табуретку. Кактус спас вас!",
-            [
-              { text: "Запустить 'Wrong World Demo'", action: "launch_game" },
-              { text: "Кнопка с черепом", action: "skull_btn" },
-              { text: "Alt+F4", action: "altf4" },
-              { text: "Встать", action: "room" },
-            ],
-            null,
-            null,
-            "chair_safe",
-          );
-        } else if (Math.random() < (hasMem(7) ? 0 : 0.35) && !hasRun("chair_safe")) {
-          go("Стул МЯГКИЙ. Слишком. Стул ЖУЁТ.", [], 7);
-        } else {
-          go(
-            "Не мимик. Повезло. Монитор гудит. Руна пульсирует.",
-            [
-              { text: "Запустить 'Wrong World Demo'", action: "launch_game" },
-              { text: "Кнопка с черепом", action: "skull_btn" },
-              { text: "Alt+F4", action: "altf4" },
-              { text: "Встать", action: "room" },
-            ],
-            null,
-            null,
-            "chair_safe",
-          );
-        }
-        break;
-
-      case "tame_chair":
-        if (Math.random() < 0.25 && !hasMem(23)) {
-          go("Одеяло душит мимика. Мимик грызёт одеяло. ВЗРЫВ МАНЫ!", [], 23);
-        } else {
-          go(
-            "БИТВА ТИТАНОВ! Одеяло душит стул, стул грызёт одеяло.\nПока они заняты — вы садитесь на краешек. Мимик приручён!",
-            [
-              { text: "Включить комп", action: "pc_on_tamed" },
-              { text: "К двери верхом на мимике", action: "door" },
-            ],
-            null,
-            null,
-            "tamed_mimic",
-          );
-        }
-        break;
-
-      case "pc_on_tamed":
-        go("Комп включён. Мимик урчит. Одеяло шевелится. Всё нормально.", [
-          { text: "Запустить 'Wrong World Demo'", action: "launch_game" },
-          { text: "Кнопка с черепом", action: "skull_btn" },
-          { text: "К двери верхом на мимике", action: "door" },
-        ]);
-        break;
-
-      case "pc_standing":
-        go("Включаете стоя. Обои — фото ЭТОЙ комнаты. С вами в кровати. Сделано СЕЙЧАС.", [
-          { text: "Сесть на стул", action: "sit_chair" },
-          ...(hasMem(7) && hasMem(0) ? [{ text: "⚡ Бросить одеяло на стул", action: "tame_chair" }] : []),
-        ]);
-        break;
-
-      case "skull_btn":
-        go("Кнопка с черепом. ВСЕ БУКВЫ ЗАГЛАВНЫЕ. ТЕКСТ КРИЧИТ.\nЕщё раз — перестал. Уф.", [
-          { text: "Запустить 'Wrong World Demo'", action: "launch_game" },
-          { text: "Встать", action: "room" },
-          { text: "Ctrl+Skull", action: "ctrl_skull" },
-        ]);
-        break;
-
-      case "ctrl_skull":
-        go("Диспетчер задач мира:\ngravity.exe — 23%\nmimic_spawner.dll — 8%\nplayer_suffering.sys — 99%", [
-          { text: "Завершить player_suffering.sys", action: "die24" },
-          { text: "Закрыть", action: "room" },
-        ]);
-        break;
-
-      case "die24":
-        go("«ОШИБКА: Обновляю пользователя...» Вы теперь версия 0.0.0.", [], 24);
-        break;
-
-      case "altf4":
-        go("Вы нажимаете Alt+F4. Ничего не происходит. Руна мигает красным.\n«ВЫХОД ЗАПРЕЩЁН. ИГРАЙТЕ В ИГРУ.»", [
-          { text: "⚡ Нажать Alt+F4 ещё раз (Назло!)", action: "die12_real" },
-          { text: "Запустить 'Wrong World Demo'", action: "launch_game" },
-          { text: "Выдернуть шнур", action: "die3" },
-          { text: "Обновить драйвера", action: "die4" },
-        ]);
-        break;
-
-      case "die12_real":
-        go(
-          "Вы упрямо зажимаете Alt+F4 в реальности. Вы локальная аномалия. Мир решил, что вас проще закрыть, чем исправить.",
-          [],
-          12,
-        );
-        break;
-
-      case "die0":
-        go("Рывок — нога в одеяле — шея + спинка кровати.", [], 0);
-        break;
-      case "die2":
-        go("40 кг мудрости рушатся вам на голову.", [], 2);
-        break;
-      case "die3":
-        go("Шнур → 50 000 ман через руку, тело и тапочки.", [], 3);
-        break;
-      case "die4":
-        go("«Обновить». Принтер активируется. Дуло на вас. Файрбол.", [], 4);
-        break;
-      case "die9":
-        go("За окном — вы. Оба кричите. Стекло лопается от резонанса.", [], 9);
-        break;
-      case "die10":
-        go("Тапочки. Левая нога — Антарктида. Правая — Солнце.", [], 10);
-        break;
-      case "die11":
-        go("Пыль = прах предыдущего игрока. Рекурсия праха.", [], 11);
-        break;
-      case "die16":
-        go("Кактус в карман → лимит веса → сингулярность.", [], 16);
-        break;
-
-      case "computer_nested":
-        go("Вы находите компьютер внутри игры. Он выглядит пиксельно и грустно.", [
-          { text: "Запустить 'Wrong World Demo'", action: "launch_game" },
-          { text: "Выйти (Оставь внутри игры)", action: "exit" },
-        ]);
-        break;
-
-      case "launch_game":
-        if (depth >= 3) {
-          go("Пиксели → символы → шум → ничто. Вложенность схлопнулась.", [], 8);
-        } else {
-          setNestedGame(true);
-          const loadingMessage =
-            depth === 0 ? "Красиво, с анимацией." : depth === 1 ? "Полоска дёргается." : "▓▓▓░░░ 43%... ████ ГОТОВО.";
-          setText(
-            (current) =>
-              current +
-              "\n\n" +
-              prefix +
-              "Загрузка Wrong World Demo v0." +
-              (depth + 1) +
-              "...\n" +
-              prefix +
-              loadingMessage,
-          );
-        }
-        break;
-
-      case "collapse":
-      case "exit":
-        setNestedGame(false);
-        onCollapse?.();
-        break;
-
-      default:
-        go("Действие не прописано. Reality Engine не знает что с вами делать.\nВы — баг.", [], 25);
-        break;
+    if (logRef.current) {
+      logRef.current.scrollTop = logRef.current.scrollHeight;
     }
+  }, [log, choices]);
+
+  const format = (block: string) =>
+    block
+      .split("\n")
+      .map((line) => prefix + line)
+      .join("\n");
+
+  const append = (block: string, replace = false) => {
+    const formatted = format(depth >= 2 ? corruptText(block, depth) : block);
+    setLog((current) => (replace || !current ? formatted : current + "\n\n" + formatted));
   };
 
-  if (depth > MAX_NESTING_DEPTH) {
-    return (
-      <section className="reality-collapse" aria-label="Reality collapsed">
-        <p>Reality Engine refused to allocate another layer.</p>
-        <button type="button" onClick={onCollapse}>
-          ВЕРНУТЬСЯ В СЛОЙ ВЫШЕ
-        </button>
-      </section>
+  const context = (): StoryContext => ({
+    mem: memoryRef.current,
+    run: runRef.current,
+    depth,
+    lastDeath: lastDeathRef.current,
+  });
+
+  const die = (deathId: DeathId, text: string, fromNestedGame = false) => {
+    if (depth > 0) {
+      onNestedDeath?.(deathId, text);
+      return;
+    }
+
+    const isNew = !memoryRef.current.has(deathId);
+    const death = DEATHS[deathId];
+    memoryRef.current.add(deathId);
+    lastDeathRef.current = deathId;
+    runRef.current = new Set();
+    onDeath(deathId);
+    if (!memoryRef.current.has(DIED_FLAG)) {
+      memoryRef.current.add(DIED_FLAG);
+      onMemory(DIED_FLAG);
+    }
+
+    append(
+      [
+        text,
+        ...(fromNestedGame ? ["Руна на системнике вспыхивает и гаснет. Смерть в игре оказалась настоящей."] : []),
+        "",
+        DIVIDER,
+        `💀 СМЕРТЬ #${deathId}: ${death.name}`,
+        death.desc,
+        DIVIDER,
+        "",
+        "Темнота. Холод. Тишина.",
+        isNew ? "Новая смерть в коллекции. Вы запомнили, как это случилось." : "Опять это. Вы ведь уже знали, чем кончится.",
+      ].join("\n"),
     );
-  }
+    setChoices([{ text: "Открыть глаза (опять…)", action: "wake", insight: false }]);
+  };
+
+  const enter = (sceneId: string, replace = false) => {
+    const definition = SCENES[sceneId];
+    if (!definition) {
+      console.warn(`Wrong World: unknown scene "${sceneId}"`);
+      return;
+    }
+
+    const scene = resolveScene(definition, context());
+    for (const key of scene.remember ?? []) {
+      if (!memoryRef.current.has(key)) {
+        memoryRef.current.add(key);
+        onMemory(key);
+      }
+    }
+    for (const flag of scene.set ?? []) runRef.current.add(flag);
+    for (const flag of scene.unset ?? []) runRef.current.delete(flag);
+
+    const ctx = context();
+    const text = sceneText(scene, ctx);
+
+    if (scene.death !== undefined) {
+      die(scene.death, text);
+      return;
+    }
+
+    append(scene.showGraphics ? `${style.descStyle}\n\n${text}` : text, replace);
+
+    const next: VisibleChoice[] = (scene.choices ?? [])
+      .filter((choice) => checkCondition(choice.if, ctx))
+      .map((choice) => ({
+        text: choice.text,
+        to: choice.to,
+        action: choice.action,
+        ending: choice.ending,
+        insight: isInsight(choice),
+      }));
+
+    if (depth === 0 && scene.idle !== false && next.length > 0) {
+      next.push({ text: IDLE_CHOICE_TEXT, to: IDLE_SCENE, insight: false });
+    }
+
+    setChoices(next);
+  };
+
+  useEffect(() => {
+    if (startedRef.current) return;
+    startedRef.current = true;
+    enter(depth === 0 ? START_SCENE : NESTED_START_SCENE, true);
+    // Первая сцена открывается один раз при монтировании слоя (StrictMode вызывает эффект дважды).
+  }, []);
+
+  const choose = (choice: VisibleChoice) => {
+    switch (choice.action) {
+      case "wake":
+        onMusicCue?.("main");
+        enter(RESPAWN_SCENE);
+        return;
+      case "launch": {
+        if (depth >= MAX_LAYER_DEPTH) {
+          enter(TOO_DEEP_SCENE);
+          return;
+        }
+        const loadingMessage =
+          depth === 0 ? "Красиво, с анимацией." : depth === 1 ? "Полоска дёргается." : "▓▓▓░░░ 43%... ████ ГОТОВО.";
+        append(`Загрузка Wrong World Demo v0.${depth + 1}...\n${loadingMessage}`);
+        setNestedGame(true);
+        return;
+      }
+      case "exit":
+        onExit?.();
+        return;
+      case "win":
+        onWin(choice.ending ?? "survivor");
+        return;
+    }
+
+    if (choice.to) enter(choice.to);
+  };
 
   if (nestedGame) {
     const nestedStyle = GRAPHICS_LEVELS[Math.min(depth + 1, GRAPHICS_LEVELS.length - 1)];
@@ -752,28 +374,18 @@ function GameLayer({
         <GameLayer
           depth={depth + 1}
           memory={memory}
+          lastDeath={lastDeathRef.current}
           onDeath={onDeath}
           onMemory={onMemory}
           onWin={onWin}
           onMusicCue={onMusicCue}
-          onCollapse={() => {
+          onExit={() => {
             setNestedGame(false);
-
-            if (depth === 0) {
-              setText(
-                (current) =>
-                  current +
-                  "\n\n════════════════════════════════════\n" +
-                  "Все слои реальности схлопнулись. Монитор погас. Озон и сожаление.\n" +
-                  "Кактус смотрит с укоризной.\n════════════════════════════════════",
-              );
-              setChoices([
-                { text: "Осмотреть комнату", action: "room" },
-                { text: "Лечь обратно", action: "wake" },
-              ]);
-            } else {
-              onCollapse?.();
-            }
+            enter(NESTED_EXIT_SCENE);
+          }}
+          onNestedDeath={(deathId, text) => {
+            setNestedGame(false);
+            die(deathId, text, true);
           }}
         />
       </div>
@@ -796,26 +408,26 @@ function GameLayer({
       aria-label={style.name}
     >
       {depth === 0 && (
-        <figure className="scene-illustration" aria-label="Первая сцена Wrong World">
+        <figure className="scene-illustration" aria-label="Комната Wrong World">
           <img src={menuArt} alt="" />
         </figure>
       )}
 
-      <div ref={textRef} className="story-log">
-        {text}
+      <div ref={logRef} className="story-log">
+        {log}
       </div>
 
       {choices.length > 0 && (
         <div className="choice-list">
           {choices.map((choice, index) => {
-            const isMemoryChoice = choice.text.startsWith("⚡");
-            const glitchedHint = depth >= 3 ? corruptText(choice.text, depth) : null;
+            const label = (choice.insight ? "⚡ " : "") + choice.text;
+            const glitchedHint = depth >= 3 ? corruptText(label, depth) : null;
 
             return (
               <button
-                key={`${choice.action}-${index}`}
+                key={`${choice.to ?? choice.action}-${index}`}
                 type="button"
-                className={`choice-button ${isMemoryChoice ? "choice-button--memory" : ""}`}
+                className={`choice-button ${choice.insight ? "choice-button--memory" : ""}`}
                 style={
                   {
                     "--choice-padding": depth > 2 ? "4px 8px" : "8px 14px",
@@ -824,11 +436,11 @@ function GameLayer({
                   } as CSSProperties
                 }
                 title={glitchedHint ?? undefined}
-                aria-label={choice.text}
-                onClick={() => handleChoice(choice.action)}
+                aria-label={label}
+                onClick={() => choose(choice)}
               >
                 {prefix}
-                {choice.text}
+                {label}
                 {glitchedHint !== null && (
                   <span className="choice-button__glitch" aria-hidden="true">
                     {glitchedHint}
@@ -843,22 +455,12 @@ function GameLayer({
   );
 }
 
-const ENDINGS: Record<EndingId, { title: string; icon: string; desc: string }> = {
-  survivor: {
-    title: "ВЫЖИВШИЙ",
-    icon: "🐎",
-    desc:
-      "Вы приручили стул-мимика, натравив одеяло-убийцу.\n" +
-      "Верхом на мимике пробили рендер-барьер.\n" +
-      "Мир не принял вас. Вы приняли мир — и сбежали.",
-  },
-};
-
 export default function App() {
   const [started, setStarted] = useState(false);
   const [runnerStarted, setRunnerStarted] = useState(false);
   const [deaths, setDeaths] = useState<Set<DeathId>>(loadDeathSet);
   const [memoryFlags, setMemoryFlags] = useState<Set<MemoryKey>>(loadMemorySet);
+  const [lastDeath, setLastDeath] = useState<DeathId | null>(loadLastDeath);
   const [showCollection, setShowCollection] = useState(false);
   const [ending, setEnding] = useState<EndingId | null>(null);
   const snapAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -873,6 +475,11 @@ export default function App() {
   useEffect(() => {
     window.localStorage.setItem("wrong-world-memory", JSON.stringify([...memoryFlags]));
   }, [memoryFlags]);
+
+  useEffect(() => {
+    if (lastDeath === null) window.localStorage.removeItem("wrong-world-last-death");
+    else window.localStorage.setItem("wrong-world-last-death", String(lastDeath));
+  }, [lastDeath]);
 
   const playMusic = useCallback((track: MusicTrack, unlock = false) => {
     if (unlock) musicUnlockedRef.current = true;
@@ -924,6 +531,7 @@ export default function App() {
       playSnap();
       setDeaths((previous) => new Set([...previous, id]));
       setMemoryFlags((previous) => new Set([...previous, id]));
+      setLastDeath(id);
     },
     [playMusic, playSnap],
   );
@@ -976,6 +584,7 @@ export default function App() {
     window.localStorage.removeItem("wrong-world-memory");
     setDeaths(new Set());
     setMemoryFlags(new Set());
+    setLastDeath(null);
     setEnding(null);
     setStarted(false);
     setRunnerStarted(false);
@@ -1022,18 +631,18 @@ export default function App() {
       <main className="title-screen" style={{ backgroundImage: `url(${menuArt})` }}>
         <div className="title-scrim" />
         <section className="title-card" aria-label="Wrong World start">
-          <p className="eyebrow">Reality Engine v0.13.7</p>
+          <p className="eyebrow">07:00 · 220 В манны</p>
           <h1>WRONG WORLD</h1>
           <p>
-            Вы умерли и попали в другой мир.
+            Ваш мир. Ваша комната.
             <br />
-            Мир решил, что это ошибка.
+            Только за ночь в неё пришла магия — и всё стало неправильным.
           </p>
           <div className="mode-grid" aria-label="Выбор режима">
             <button type="button" className="mode-card" onClick={handleStart}>
               <span className="mode-card__icon">🪟</span>
               <span className="mode-card__title">Wrong World</span>
-              <span className="mode-card__desc">Оригинальный текстовый баг-исекай с коллекцией смертей.</span>
+              <span className="mode-card__desc">Ваша комната, только неправильная: текстовое приключение с коллекцией смертей.</span>
             </button>
             <button type="button" className="mode-card mode-card--runner" onClick={handleRunnerStart}>
               <span className="mode-card__icon">🏃</span>
@@ -1080,11 +689,11 @@ export default function App() {
         <GameLayer
           depth={0}
           memory={memoryFlags}
+          lastDeath={lastDeath}
           onDeath={handleDeath}
           onMemory={handleMemory}
           onWin={handleWin}
           onMusicCue={handleMusicCue}
-          onCollapse={() => {}}
         />
       )}
     </main>

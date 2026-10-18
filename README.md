@@ -1,54 +1,61 @@
 # Wrong World
 
-Wrong World is a small React game prototype built with Vite. It contains two in-app modes from the title screen:
+Текстовое приключение в жанре магического бытового реализма. Это наш обычный мир и ваша собственная комната — только за ночь в неё пришла магия, и всё стало неправильным: в розетке 220 вольт манны, в чайнике живёт саламандра, компьютерный стул оказался мимиком.
 
-- **Wrong World** — the original branching text adventure about dying, remembering why you died, and escaping a bugged isekai room.
-- **Android Runner MVP** — a mobile-first portrait runner prototype inside the same React app shell.
+Каждая смерть заканчивается будильником в 7:00 и новой записью в коллекции. Память о прошлых смертях открывает новые выборы (⚡). Цель — выбраться из комнаты живым.
 
-## Web / NPM
+## Платформы и ветки
 
-Use npm for the web build. Do not add Yarn or pnpm lockfiles.
+| Ветка | Платформа | Что получается |
+|---|---|---|
+| `main` | Windows (PC) | установщик `Wrong World Setup *.exe` и portable-версия |
+| `android` | Android | debug APK через GitHub Actions (Capacitor), см. `docs/android-build.md` в ветке |
+| `sega` | Sega Mega Drive / Genesis | ROM через SGDK, см. `sega/README.md` в ветке |
+
+Общая игра (сюжет и движок) живёт в `main`. Платформенные ветки получают её через `git merge main` и добавляют только свою упаковку — поэтому сюжет правится один раз, в `main`.
+
+## Сюжет
+
+- `src/story.ts` — весь сюжет в виде данных: смерти, сцены, варианты сцен, выборы, условия и концовка. Импортов нет, поэтому файл читают и игра, и скрипты.
+- `src/App.tsx` — веб-движок: показывает сцены, хранит память между жизнями, «игру в игре» с деградацией графики, музыку и коллекцию смертей.
+- `npm run check:story` — проверка связности: битые переходы, недостижимые сцены и смерти, флаги, которые требуются, но нигде не выдаются, и симуляция «жизнь за жизнью», которая доказывает, что все смерти и побег достижимы с нуля. Нужен Node 22.18+.
+
+Как устроена сцена:
+
+- `text` — текст; `{lastDeath}` подставляет название прошлой смерти героя.
+- `choices` — кнопки; `to` ведёт в другую сцену, `action` запускает игру в игре (`launch`), выходит из неё (`exit`) или завершает игру (`win`).
+- `if` — условие: `mem`/`noMem` (память между жизнями), `run`/`noRun` (флаги текущей жизни), `minDepth`/`maxDepth` (уровень игры в игре). Выбор, открытый памятью (`mem`), показывается как озарение ⚡.
+- `variants` — несколько версий сцены, берётся первая подходящая.
+- `death` — сцена-смерть; `set`/`unset` — флаги жизни; `remember` — память, которая останется после смерти.
+
+## PC (Windows)
 
 ```powershell
 npm install
-npm run dev
-npm run build
+npm run dev              # игра в браузере
+npm run desktop          # игра в окне Electron
+npm run build:installer  # установщик
+npm run build:exe        # установщик + portable
 ```
 
-`npm run build` writes the Vite output to `dist/`.
+Готовые файлы появляются в `release/`:
 
-## Android APK through GitHub Actions
+- `Wrong World Setup 0.1.0.exe` — установщик: выбор папки, ярлыки на рабочем столе и в «Пуске», удаление через «Приложения». Сохранения при удалении не стираются.
+- `Wrong World 0.1.0 Portable.exe` — запуск без установки.
 
-Local Android setup may fail in proxied environments with `403 Forbidden` while downloading `@capacitor/android`. The supported APK path for that case is the GitHub Actions workflow:
+В игре F11 включает полноэкранный режим. Сохранения (коллекция смертей и память) хранятся в профиле пользователя.
 
-1. Push the branch to GitHub.
-2. Open the repository on GitHub.
-3. Go to **Actions**.
-4. Select **Android Debug APK**.
-5. Click **Run workflow** and choose the branch.
-6. Wait for the workflow to finish.
-7. Open the completed workflow run and download the artifact named **app-debug-apk** from the artifacts section at the bottom of the page.
-8. Unzip the artifact; it contains `app-debug.apk`.
-
-The workflow is defined in `.github/workflows/android-debug-apk.yml`. It installs npm dependencies, builds the Vite app, creates `android/` with Capacitor if missing, runs `npx cap sync android`, builds `./gradlew assembleDebug`, and uploads:
-
-```text
-android/app/build/outputs/apk/debug/app-debug.apk
-```
-
-## Install APK on Android 15
-
-Use either ADB:
+Если сборка падает на `winCodeSign` с ошибкой `Cannot create symbolic link`, включите режим разработчика Windows или распакуйте архив из кеша electron-builder без macOS-файлов:
 
 ```powershell
-adb install -r app-debug.apk
+$cache = "$env:LOCALAPPDATA\electron-builder\Cache\winCodeSign"
+$archive = Get-ChildItem "$cache\*.7z" | Select-Object -First 1
+node_modules\7zip-bin\win\x64\7za.exe x -y $archive.FullName "-o$cache\winCodeSign-2.6.0" "-xr!darwin"
 ```
 
-Or copy `app-debug.apk` to the phone, open it from Files, and allow installs from that source when Android asks. After installation, open **Wrong World**; the Android shell contains both **Wrong World** and **Android Runner MVP**.
+## Правила проекта
 
-## Project start rules
-
-- Keep source, config, docs, and small text files in normal Git.
-- Keep large binary assets in Git LFS: art, audio, video, layered source files.
-- Do not commit generated folders like `node_modules/` or `dist/`.
-- Make a commit before large agent edits, then another commit after a working build.
+- Исходники, конфиги, документация и небольшие текстовые файлы — в обычном Git.
+- Крупные бинарные ассеты — в Git LFS: арт, аудио, видео, слоёные исходники.
+- Не коммитить сгенерированные папки: `node_modules/`, `dist/`, `release/`.
+- Делать коммит перед крупными правками агентом и ещё один — после рабочей сборки.

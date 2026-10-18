@@ -1,48 +1,62 @@
-# Android debug APK build
+# Android-сборка (ветка `android`)
 
-Android APK builds are handled by GitHub Actions because this local environment can return `403 Forbidden` when downloading `@capacitor/android`.
+Android-версия — та же веб-игра из `main`, упакованная в Capacitor. На титульном экране два режима:
 
-## Capacitor settings
+- **Wrong World** — основная игра, общая для всех платформ;
+- **Android Runner MVP** — прототип вертикального раннера (`src/RunnerGame.tsx`), есть только в этой ветке.
 
-The app uses `capacitor.config.ts`:
+## Как обновить игру из `main`
+
+Сюжет и движок правятся в `main`. Чтобы Android получил свежую версию:
+
+```powershell
+git checkout android
+git merge main
+git push
+```
+
+После пуша GitHub Actions сам соберёт новый APK.
+
+## Сборка APK в GitHub Actions
+
+Workflow: `.github/workflows/android-debug-apk.yml`. Запускается при каждом пуше в ветку и вручную.
+
+1. Откройте репозиторий на GitHub → **Actions** → **Build Android Debug APK**.
+2. Для ручного запуска нажмите **Run workflow** и выберите ветку `android`.
+3. Дождитесь окончания и скачайте артефакт **app-debug-apk** внизу страницы запуска.
+4. Распакуйте архив — внутри `app-debug.apk`.
+
+Что делает workflow:
+
+1. Node.js 20, `npm ci` (Electron не скачивается — он нужен только PC-версии).
+2. `npm run build` — сборка Vite в `dist/`.
+3. `npx cap add android`, если папки `android/` нет, затем `npx cap sync android`.
+4. Gradle wrapper 8.5, Android SDK 35, исключение дублирующихся модулей Kotlin.
+5. JDK 21 и `./gradlew assembleDebug`.
+6. Загрузка `android/app/build/outputs/apk/debug/app-debug.apk` как артефакта.
+
+## Установка на телефон
+
+Через ADB:
+
+```powershell
+adb install -r app-debug.apk
+```
+
+Или скопируйте `app-debug.apk` на телефон, откройте из «Файлов» и разрешите установку из этого источника.
+
+## Настройки Capacitor
+
+`capacitor.config.ts`:
 
 - `appId`: `com.kotlew89.wrongworld`
 - `appName`: `Wrong World`
 - `webDir`: `dist`
 - `server.androidScheme`: `https`
 
-## CI workflow
+## Локальная сборка
 
-Workflow file:
-
-```text
-.github/workflows/android-debug-apk.yml
-```
-
-It runs on manual dispatch and pushes to `main`, `master`, and `android`. The job:
-
-1. checks out the repository;
-2. sets up Node.js 20 with npm cache;
-3. runs `npm install`;
-4. runs `npm run build`;
-5. ensures `@capacitor/core`, `@capacitor/cli`, and `@capacitor/android` are installed;
-6. runs `npx cap add android` when `android/` is absent;
-7. runs `npx cap sync android`;
-8. sets up JDK 17 and Android SDK;
-9. runs `chmod +x gradlew && ./gradlew assembleDebug` in `android/`;
-10. uploads `android/app/build/outputs/apk/debug/app-debug.apk` as the artifact `app-debug-apk`.
-
-## Manual GitHub run
-
-1. Open **Actions** in GitHub.
-2. Select **Android Debug APK**.
-3. Click **Run workflow**.
-4. Download **app-debug-apk** from the completed run.
-5. Install `app-debug.apk` with `adb install -r app-debug.apk` or from the phone file manager.
-
-## Local commands when registry is available
-
-If your local machine can download Capacitor packages and has Android SDK/JDK installed, the equivalent local commands are:
+Нужны JDK 21 и Android SDK. Локально загрузка `@capacitor/android` может падать с `403 Forbidden` за прокси — тогда используйте GitHub Actions.
 
 ```bash
 npm install
@@ -50,8 +64,7 @@ npm run build
 npx cap add android
 npx cap sync android
 cd android
-chmod +x gradlew
 ./gradlew assembleDebug
 ```
 
-Do not treat local Android as ready until `android/app/build/outputs/apk/debug/app-debug.apk` exists.
+Сборка готова, только когда появился `android/app/build/outputs/apk/debug/app-debug.apk`.
