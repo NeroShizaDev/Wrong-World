@@ -23,6 +23,7 @@ pnpm-debug.log*
 # Editor and OS noise
 .vscode/
 .idea/
+.claude/
 .DS_Store
 Thumbs.db
 

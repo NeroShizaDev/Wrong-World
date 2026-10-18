@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+// «Дичь идёт» — секретная «Новая игра»: открывается, только когда собраны все смерти и все концовки.
+
 type RunnerStatus = "ready" | "playing" | "won" | "lost";
 type EnemyKind = "tourist" | "petrovich" | "babushka" | "squad" | "bossMinion";
 type GateKind = "add" | "remove" | "damage" | "fireRate" | "shield" | "rocket" | "freeze";
@@ -13,6 +15,7 @@ type Enemy = {
   maxHp: number;
   speed: number;
   damage: number;
+  points: number;
   label: string;
   emoji: string;
 };
@@ -46,7 +49,9 @@ type RunnerSnapshot = {
   status: RunnerStatus;
   playerX: number;
   squad: number;
-  coins: number;
+  score: number;
+  best: number;
+  newRecord: boolean;
   progress: number;
   bossHp: number;
   bossMaxHp: number;
@@ -72,14 +77,26 @@ type RunnerWorld = RunnerSnapshot & {
   bossTimer: number;
 };
 
+export const RUNNER_BEST_KEY = "wrong-world-runner-best";
+
+const BOSS_NAME = "Пакетная Королева";
+const BOSS_POINTS = 500;
 const PLAYER_Y = 88;
 const LANES = [18, 38, 62, 82];
+// Зазоры в пикселях (карточки врагов и ворот около 58 px высотой): ворота и враги не налезают друг на друга.
+const GATE_GAP_PX = 62;
+const ENEMY_GAP_PX = 64;
+const KEYBOARD_SPEED = 95;
+// Карточка отряда шире полосы: у краёв её не обрезает стенка арены.
+const PLAYER_MIN_X = 15;
+const PLAYER_MAX_X = 85;
+
 const ENEMY_TEMPLATES: Record<EnemyKind, Omit<Enemy, "id" | "x" | "y">> = {
-  tourist: { kind: "tourist", hp: 18, maxHp: 18, speed: 16, damage: 1, label: "Турист", emoji: "📸" },
-  petrovich: { kind: "petrovich", hp: 34, maxHp: 34, speed: 11, damage: 2, label: "Петрович", emoji: "🧰" },
-  babushka: { kind: "babushka", hp: 24, maxHp: 24, speed: 22, damage: 3, label: "Бабка", emoji: "🛍️" },
-  squad: { kind: "squad", hp: 95, maxHp: 95, speed: 9, damage: 5, label: "Отряд Петровичей", emoji: "👷" },
-  bossMinion: { kind: "bossMinion", hp: 42, maxHp: 42, speed: 18, damage: 2, label: "Пакетный миньон", emoji: "💼" },
+  tourist: { kind: "tourist", hp: 18, maxHp: 18, speed: 16, damage: 1, points: 10, label: "Турист", emoji: "📸" },
+  petrovich: { kind: "petrovich", hp: 34, maxHp: 34, speed: 11, damage: 2, points: 20, label: "Петрович", emoji: "🧰" },
+  babushka: { kind: "babushka", hp: 24, maxHp: 24, speed: 22, damage: 3, points: 15, label: "Бабка", emoji: "🛍️" },
+  squad: { kind: "squad", hp: 95, maxHp: 95, speed: 9, damage: 5, points: 60, label: "Отряд Петровичей", emoji: "👷" },
+  bossMinion: { kind: "bossMinion", hp: 42, maxHp: 42, speed: 18, damage: 2, points: 15, label: "Пакетный миньон", emoji: "💼" },
 };
 
 const GATE_POOL: Array<Omit<Gate, "id" | "x" | "y">> = [
@@ -93,12 +110,31 @@ const GATE_POOL: Array<Omit<Gate, "id" | "x" | "y">> = [
   { kind: "freeze", label: "заморозка", tone: "power" },
 ];
 
-const initialWorld = (): RunnerWorld => ({
+function loadBest() {
+  try {
+    const best = Number(window.localStorage.getItem(RUNNER_BEST_KEY));
+    return Number.isFinite(best) && best > 0 ? best : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function saveBest(best: number) {
+  try {
+    window.localStorage.setItem(RUNNER_BEST_KEY, String(best));
+  } catch {
+    // Рекорд просто не сохранится, забег от этого не ломается.
+  }
+}
+
+const initialWorld = (best: number): RunnerWorld => ({
   status: "ready",
   playerX: 50,
   targetX: 50,
   squad: 12,
-  coins: 0,
+  score: 0,
+  best,
+  newRecord: false,
   progress: 0,
   bossHp: 520,
   bossMaxHp: 520,
@@ -111,7 +147,7 @@ const initialWorld = (): RunnerWorld => ({
   bullets: [],
   gates: [],
   floaters: [],
-  message: "Удерживай палец и веди отряд. Стрельба автоматическая.",
+  message: "Веди отряд пальцем, мышью или стрелками. Стрельба автоматическая.",
   nextId: 1,
   elapsed: 0,
   enemyTimer: 0.6,
@@ -133,7 +169,9 @@ function makeSnapshot(world: RunnerWorld): RunnerSnapshot {
     status: world.status,
     playerX: world.playerX,
     squad: world.squad,
-    coins: world.coins,
+    score: world.score,
+    best: world.best,
+    newRecord: world.newRecord,
     progress: world.progress,
     bossHp: world.bossHp,
     bossMaxHp: world.bossMaxHp,
@@ -186,15 +224,16 @@ function applyGate(world: RunnerWorld, gate: Gate) {
       } else {
         world.squad = clamp(world.squad - 8, 0, 99);
         addFloater(world, gate.x, PLAYER_Y - 10, "-8");
+        if (world.squad <= 0) loseRun(world);
       }
       break;
     case "damage":
       world.damageBoost = 7;
-      addFloater(world, gate.x, PLAYER_Y - 10, "x2 DMG");
+      addFloater(world, gate.x, PLAYER_Y - 10, "x2 урон");
       break;
     case "fireRate":
       world.fireRateBoost = 7;
-      addFloater(world, gate.x, PLAYER_Y - 10, "x2 FIRE");
+      addFloater(world, gate.x, PLAYER_Y - 10, "x2 темп");
       break;
     case "shield":
       world.shield = true;
@@ -215,6 +254,11 @@ function applyGate(world: RunnerWorld, gate: Gate) {
   }
 }
 
+function loseRun(world: RunnerWorld) {
+  world.status = "lost";
+  world.message = "Отряд закончился. Петровичи записали это как плановую оптимизацию.";
+}
+
 function damagePlayer(world: RunnerWorld, amount: number, x: number, y: number) {
   if (world.shield) {
     world.shield = false;
@@ -225,13 +269,45 @@ function damagePlayer(world: RunnerWorld, amount: number, x: number, y: number) 
   world.squad = clamp(world.squad - amount, 0, 99);
   addFloater(world, x, y, `-${amount}`);
 
-  if (world.squad <= 0) {
-    world.status = "lost";
-    world.message = "Отряд закончился. Петровичи записали это как плановую оптимизацию.";
+  if (world.squad <= 0) loseRun(world);
+}
+
+type LaneSpot = { y: number; enemy: Enemy | null };
+
+// В каждой полосе враги идут гуськом и ждут за воротами, а ворота толкают перед собой всех, в кого упёрлись.
+function keepApart(world: RunnerWorld, arenaHeight: number) {
+  const gateGap = (GATE_GAP_PX / arenaHeight) * 100;
+  const enemyGap = (ENEMY_GAP_PX / arenaHeight) * 100;
+
+  for (const lane of LANES) {
+    const spots: LaneSpot[] = [
+      ...world.gates.filter((gate) => Math.abs(gate.x - lane) < 20).map((gate) => ({ y: gate.y, enemy: null })),
+      ...world.enemies.filter((enemy) => enemy.x === lane).map((enemy) => ({ y: enemy.y, enemy })),
+    ].sort((a, b) => a.y - b.y);
+    const gap = (a: LaneSpot, b: LaneSpot) => (a.enemy && b.enemy ? enemyGap : gateGap);
+
+    for (let i = spots.length - 2; i >= 0; i -= 1) {
+      const spot = spots[i];
+      const front = spots[i + 1];
+      if (spot.enemy && spot.y > front.y - gap(spot, front)) spot.y = front.y - gap(spot, front);
+    }
+
+    let pushed = false;
+    for (let i = 0; i < spots.length; i += 1) {
+      const spot = spots[i];
+      const back = spots[i - 1];
+      if (!spot.enemy) pushed = true;
+      else if (pushed && spot.y < back.y + gap(back, spot)) spot.y = back.y + gap(back, spot);
+      else pushed = false;
+    }
+
+    for (const spot of spots) {
+      if (spot.enemy) spot.enemy.y = spot.y;
+    }
   }
 }
 
-function tickWorld(world: RunnerWorld, dt: number) {
+function tickWorld(world: RunnerWorld, dt: number, arenaHeight: number) {
   if (world.status !== "playing") {
     return;
   }
@@ -248,7 +324,7 @@ function tickWorld(world: RunnerWorld, dt: number) {
 
   if (!world.bossActive && world.elapsed >= 58) {
     world.bossActive = true;
-    world.message = "БОСС: Пакетная Королева. Она несёт скидки и проблемы.";
+    world.message = `БОСС: ${BOSS_NAME}. Она несёт скидки и проблемы.`;
     world.enemies = [];
     world.gates = [];
     addFloater(world, 50, 18, "БОСС!");
@@ -259,6 +335,7 @@ function tickWorld(world: RunnerWorld, dt: number) {
     .map((enemy) => ({ ...enemy, y: enemy.y + enemy.speed * enemySpeedScale * dt }))
     .filter((enemy) => enemy.y < 112 && enemy.hp > 0);
   world.gates = world.gates.map((gate) => ({ ...gate, y: gate.y + 18 * dt })).filter((gate) => gate.y < 112);
+  keepApart(world, arenaHeight);
   world.bullets = world.bullets.map((bullet) => ({ ...bullet, y: bullet.y - (bullet.rocket ? 72 : 58) * dt })).filter((bullet) => bullet.y > -16);
 
   world.shootTimer -= dt;
@@ -304,15 +381,15 @@ function tickWorld(world: RunnerWorld, dt: number) {
     if (world.bossActive && bullet.y < 21 && Math.abs(bullet.x - 50) < 36) {
       world.bossHp = Math.max(0, world.bossHp - bullet.damage);
       bullet.y = -100;
-      if (world.bossHp <= 0) {
+      if (world.bossHp <= 0 && world.status === "playing") {
         world.status = "won";
-        world.coins += 150;
-        world.message = "Пакетная Королева повержена. Реклама была странной, но честной.";
+        world.score += BOSS_POINTS;
+        world.message = `${BOSS_NAME} повержена. Реклама была странной, но честной.`;
       }
       continue;
     }
 
-    const enemy = world.enemies.find((candidate) => distance(bullet, candidate) < (bullet.rocket ? 11 : 7));
+    const enemy = world.enemies.find((candidate) => candidate.hp > 0 && distance(bullet, candidate) < (bullet.rocket ? 11 : 7));
     if (!enemy) {
       continue;
     }
@@ -320,8 +397,8 @@ function tickWorld(world: RunnerWorld, dt: number) {
     enemy.hp -= bullet.damage;
     bullet.y = -100;
     if (enemy.hp <= 0) {
-      world.coins += enemy.kind === "squad" ? 8 : 2;
-      addFloater(world, enemy.x, enemy.y, "+монеты");
+      world.score += enemy.points;
+      addFloater(world, enemy.x, enemy.y, `+${enemy.points}`);
     }
   }
 
@@ -329,7 +406,7 @@ function tickWorld(world: RunnerWorld, dt: number) {
   world.bullets = world.bullets.filter((bullet) => bullet.y > -16);
 
   for (const enemy of world.enemies) {
-    if (distance({ x: world.playerX, y: PLAYER_Y }, enemy) < 8) {
+    if (world.status === "playing" && distance({ x: world.playerX, y: PLAYER_Y }, enemy) < 8) {
       damagePlayer(world, enemy.damage, enemy.x, enemy.y);
       enemy.hp = 0;
     }
@@ -338,17 +415,27 @@ function tickWorld(world: RunnerWorld, dt: number) {
   world.enemies = world.enemies.filter((enemy) => enemy.hp > 0);
 }
 
+function finishRun(world: RunnerWorld) {
+  if (world.score > world.best) {
+    world.best = world.score;
+    world.newRecord = true;
+    saveBest(world.best);
+  }
+}
+
 export function RunnerGame({ onExit }: { onExit: () => void }) {
-  const worldRef = useRef<RunnerWorld>(initialWorld());
+  const worldRef = useRef<RunnerWorld>(initialWorld(loadBest()));
   const arenaRef = useRef<HTMLDivElement | null>(null);
   const frameRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number | null>(null);
+  const keysRef = useRef({ left: false, right: false });
+  const arenaHeightRef = useRef(600);
   const [snapshot, setSnapshot] = useState<RunnerSnapshot>(() => makeSnapshot(worldRef.current));
 
   const publish = useCallback(() => setSnapshot(makeSnapshot(worldRef.current)), []);
 
   const startRun = useCallback(() => {
-    worldRef.current = initialWorld();
+    worldRef.current = initialWorld(worldRef.current.best);
     worldRef.current.status = "playing";
     worldRef.current.message = "Дичь идёт сверху. Веди отряд через жирные бонусы.";
     publish();
@@ -361,7 +448,36 @@ export function RunnerGame({ onExit }: { onExit: () => void }) {
     }
 
     const rect = arena.getBoundingClientRect();
-    worldRef.current.targetX = clamp(((clientX - rect.left) / rect.width) * 100, 8, 92);
+    worldRef.current.targetX = clamp(((clientX - rect.left) / rect.width) * 100, PLAYER_MIN_X, PLAYER_MAX_X);
+  }, []);
+
+  // На ПК отряд водят и стрелками (или A/D).
+  useEffect(() => {
+    const setKey = (event: KeyboardEvent, pressed: boolean) => {
+      if (event.code === "ArrowLeft" || event.code === "KeyA") keysRef.current.left = pressed;
+      else if (event.code === "ArrowRight" || event.code === "KeyD") keysRef.current.right = pressed;
+      else return;
+      event.preventDefault();
+    };
+    const down = (event: KeyboardEvent) => setKey(event, true);
+    const up = (event: KeyboardEvent) => setKey(event, false);
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    return () => {
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+    };
+  }, []);
+
+  // Арена становится ниже, когда появляется полоска босса: зазоры между врагами считаются от её настоящей высоты.
+  useEffect(() => {
+    const arena = arenaRef.current;
+    if (!arena) return;
+    const observer = new ResizeObserver(() => {
+      if (arena.clientHeight > 0) arenaHeightRef.current = arena.clientHeight;
+    });
+    observer.observe(arena);
+    return () => observer.disconnect();
   }, []);
 
   useEffect(() => {
@@ -369,8 +485,15 @@ export function RunnerGame({ onExit }: { onExit: () => void }) {
       const lastTime = lastTimeRef.current ?? time;
       const dt = Math.min(0.033, (time - lastTime) / 1000);
       lastTimeRef.current = time;
-      tickWorld(worldRef.current, dt);
-      setSnapshot(makeSnapshot(worldRef.current));
+      const world = worldRef.current;
+      const direction = Number(keysRef.current.right) - Number(keysRef.current.left);
+      if (direction !== 0 && world.status === "playing") {
+        world.targetX = clamp(world.targetX + direction * KEYBOARD_SPEED * dt, PLAYER_MIN_X, PLAYER_MAX_X);
+      }
+      const wasPlaying = world.status === "playing";
+      tickWorld(world, dt, arenaHeightRef.current);
+      if (wasPlaying && world.status !== "playing") finishRun(world);
+      setSnapshot(makeSnapshot(world));
       frameRef.current = requestAnimationFrame(loop);
     };
 
@@ -383,21 +506,22 @@ export function RunnerGame({ onExit }: { onExit: () => void }) {
   }, []);
 
   const bossRatio = snapshot.bossHp / snapshot.bossMaxHp;
+  const finished = snapshot.status === "won" || snapshot.status === "lost";
 
   return (
     <main className="runner-shell">
-      <section className="runner-phone" aria-label="Android runner prototype">
+      <section className="runner-phone" aria-label="Дичь идёт">
         <header className="runner-hud">
-          <div className="runner-stat">👥 {snapshot.squad}</div>
-          <div className="runner-progress" aria-label="Level progress">
+          <div className="runner-stat" title="Бойцы в отряде">👥 {snapshot.squad}</div>
+          <div className="runner-progress" aria-label="Прогресс забега">
             <span style={{ width: `${snapshot.progress}%` }} />
           </div>
-          <div className="runner-stat">🪙 {snapshot.coins}</div>
+          <div className="runner-stat" title="Очки">⭐ {snapshot.score}</div>
         </header>
 
         {snapshot.bossActive && (
-          <div className="boss-bar" aria-label="Boss health">
-            <strong>Пакетная Королева</strong>
+          <div className="boss-bar" aria-label="Здоровье босса">
+            <strong>{BOSS_NAME}</strong>
             <span><i style={{ width: `${bossRatio * 100}%` }} /></span>
           </div>
         )}
@@ -440,7 +564,7 @@ export function RunnerGame({ onExit }: { onExit: () => void }) {
           {snapshot.bossActive && (
             <div className="runner-boss" style={{ left: "50%", top: "10%" }}>
               <span>🛍️</span>
-              <strong>БАБИЩА</strong>
+              <strong>{BOSS_NAME}</strong>
             </div>
           )}
 
@@ -473,9 +597,16 @@ export function RunnerGame({ onExit }: { onExit: () => void }) {
 
           {snapshot.status !== "playing" && (
             <div className="runner-overlay">
-              <p className="eyebrow">ANDROID MVP</p>
+              <p className="eyebrow">РЕКЛАМА · 0+</p>
               <h1>{snapshot.status === "won" ? "ПОБЕДА" : snapshot.status === "lost" ? "ОТРЯД ВСЁ" : "ДИЧЬ ИДЁТ"}</h1>
               <p>{snapshot.message}</p>
+              {finished && (
+                <p className="runner-score">
+                  ⭐ {snapshot.score} · рекорд {snapshot.best}
+                  {snapshot.newRecord && <strong>Новый рекорд!</strong>}
+                </p>
+              )}
+              {!finished && snapshot.best > 0 && <p className="runner-score">рекорд ⭐ {snapshot.best}</p>}
               <div className="runner-overlay__actions">
                 <button type="button" className="gold-button" onClick={startRun}>
                   {snapshot.status === "ready" ? "НАЧАТЬ ЗАБЕГ" : "ЕЩЁ РАЗ"}
@@ -491,7 +622,7 @@ export function RunnerGame({ onExit }: { onExit: () => void }) {
         <footer className="runner-help">
           <span>{snapshot.damageBoost > 0 ? "🔥 x2 урон" : "🔥 базовый урон"}</span>
           <span>{snapshot.fireRateBoost > 0 ? "⚡ x2 темп" : "⚡ автоогонь"}</span>
-          <span>{snapshot.frozen > 0 ? "🧊 враги в шоке" : snapshot.shield ? "🛡️ щит" : "↔️ веди пальцем"}</span>
+          <span>{snapshot.frozen > 0 ? "🧊 враги в шоке" : snapshot.shield ? "🛡️ щит" : "↔️ веди отряд"}</span>
         </footer>
       </section>
     </main>

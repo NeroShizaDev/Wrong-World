@@ -26,7 +26,7 @@ import {
   sceneText,
 } from "./story";
 import type { ChoiceAction, DeathId, EndingId, MemoryKey, StoryContext } from "./story";
-import { RunnerGame } from "./RunnerGame";
+import { RUNNER_BEST_KEY, RunnerGame } from "./RunnerGame";
 
 type MusicTrack = "menu" | "main" | "computer" | "death" | "collection" | "victory";
 
@@ -176,6 +176,14 @@ function loadLastDeath(): DeathId | null {
   } catch {
     return null;
   }
+}
+
+// Секретная «Новая игра» («Дичь идёт») открывается, только когда собраны все смерти и все концовки.
+function isCollectionComplete(deaths: Set<DeathId>, endings: Set<EndingId>) {
+  return (
+    Object.keys(DEATHS).every((id) => deaths.has(Number(id) as DeathId)) &&
+    (Object.keys(ENDINGS) as EndingId[]).every((id) => endings.has(id))
+  );
 }
 
 function DeathCard({ id, death }: { id: DeathId; death: (typeof DEATHS)[DeathId] }) {
@@ -605,6 +613,7 @@ export default function App() {
     window.localStorage.removeItem("wrong-world-deaths");
     window.localStorage.removeItem("wrong-world-memory");
     window.localStorage.removeItem("wrong-world-endings");
+    window.localStorage.removeItem(RUNNER_BEST_KEY);
     setDeaths(new Set());
     setMemoryFlags(new Set());
     setEndings(new Set());
@@ -615,12 +624,10 @@ export default function App() {
     setShowCollection(false);
   }, []);
 
+  const collectionComplete = isCollectionComplete(deaths, endings);
+
   if (ending) {
     const currentEnding = ENDINGS[ending];
-    // «Дичь идёт» открывается, только когда собраны все смерти и все концовки.
-    const collectionComplete =
-      Object.keys(DEATHS).every((id) => deaths.has(Number(id) as DeathId)) &&
-      (Object.keys(ENDINGS) as EndingId[]).every((id) => endings.has(id));
 
     return (
       <main className="ending-screen">
@@ -677,17 +684,15 @@ export default function App() {
             <br />
             Только за ночь в неё пришла магия — и всё стало неправильным.
           </p>
-          <div className="mode-grid" aria-label="Выбор режима">
-            <button type="button" className="mode-card" onClick={handleStart}>
-              <span className="mode-card__icon">🪟</span>
-              <span className="mode-card__title">Wrong World</span>
-              <span className="mode-card__desc">Ваша комната, только неправильная: текстовое приключение с коллекцией смертей.</span>
+          <div className="title-actions">
+            <button type="button" className="gold-button" onClick={handleStart}>
+              ПРОСНУТЬСЯ
             </button>
-            <button type="button" className="mode-card mode-card--runner" onClick={handleRunnerStart}>
-              <span className="mode-card__icon">🏃</span>
-              <span className="mode-card__title">Android Runner MVP</span>
-              <span className="mode-card__desc">Portrait-раннер: веди отряд пальцем, стреляй автоматически, бей босса.</span>
-            </button>
+            {collectionComplete && (
+              <button type="button" className="gold-button new-game-button" onClick={handleRunnerStart}>
+                НОВАЯ ИГРА
+              </button>
+            )}
           </div>
         </section>
       </main>
