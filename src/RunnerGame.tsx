@@ -406,6 +406,10 @@ export function RunnerGame({ onExit }: { onExit: () => void }) {
           ref={arenaRef}
           className="runner-arena"
           onPointerDown={(event) => {
+            // Вне забега не захватываем палец: с захватом клик по кнопкам оверлея достаётся арене.
+            if (worldRef.current.status !== "playing") {
+              return;
+            }
             event.currentTarget.setPointerCapture(event.pointerId);
             setTargetFromPointer(event.clientX);
           }}
