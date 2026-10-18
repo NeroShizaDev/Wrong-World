@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import menuArt from "../Arts/wrong-world-menu-v2.png";
-import windowTheme from "../Music/NeroShizaDev - Ceiling Watcher.mp3";
+import computerTheme from "../Music/NeroShizaDev - Ceiling Watcher.mp3";
 import mainTheme from "../Music/NeroShizaDev - Layer Drop.mp3";
-import deathTheme from "../Music/NeroShizaDev - Pinned Under Glass.mp3";
-import snapFx from "../Music/NeroShizaDev - Pew Error Snap.mp3";
+import deathTheme from "../Music/NeroShizaDev - Pew Error Snap.mp3";
+import collectionTheme from "../Music/NeroShizaDev - Pinned Under Glass.mp3";
 import victoryTheme from "../Music/NeroShizaDev - Стул на закате.mp3";
 import menuTheme from "../Music/NeroShizaDev - Wrong World Boot Theme.mp3";
 import {
@@ -27,7 +27,7 @@ import {
 } from "./story";
 import type { ChoiceAction, DeathId, EndingId, MemoryKey, StoryContext } from "./story";
 
-type MusicTrack = "menu" | "main" | "death" | "window" | "victory";
+type MusicTrack = "menu" | "main" | "computer" | "death" | "collection" | "victory";
 
 type VisibleChoice = {
   text: string;
@@ -51,12 +51,14 @@ type GraphicsLevel = {
 };
 
 const TOTAL_DEATHS = Object.keys(DEATHS).length;
+const TOTAL_ENDINGS = Object.keys(ENDINGS).length;
 
 const MUSIC_TRACKS: Record<MusicTrack, { src: string; volume: number; loop: boolean }> = {
   menu: { src: menuTheme, volume: 0.34, loop: true },
   main: { src: mainTheme, volume: 0.3, loop: true },
-  death: { src: deathTheme, volume: 0.38, loop: true },
-  window: { src: windowTheme, volume: 0.42, loop: true },
+  computer: { src: computerTheme, volume: 0.36, loop: true },
+  death: { src: deathTheme, volume: 0.42, loop: false },
+  collection: { src: collectionTheme, volume: 0.36, loop: true },
   victory: { src: victoryTheme, volume: 0.4, loop: true },
 };
 
@@ -154,6 +156,16 @@ function loadMemorySet() {
   }
 }
 
+function loadEndingSet() {
+  try {
+    const raw = window.localStorage.getItem("wrong-world-endings");
+    if (!raw) return new Set<EndingId>();
+    return new Set((JSON.parse(raw) as EndingId[]).filter((id) => id in ENDINGS));
+  } catch {
+    return new Set<EndingId>();
+  }
+}
+
 function loadLastDeath(): DeathId | null {
   try {
     const raw = window.localStorage.getItem("wrong-world-last-death");
@@ -177,6 +189,7 @@ function DeathCard({ id, death }: { id: DeathId; death: (typeof DEATHS)[DeathId]
 
 type GameLayerProps = {
   depth?: number;
+  hidden?: boolean;
   memory: Set<MemoryKey>;
   lastDeath: DeathId | null;
   onDeath: (id: DeathId) => void;
@@ -191,6 +204,7 @@ const DIVIDER = "═════════════════════
 
 function GameLayer({
   depth = 0,
+  hidden = false,
   memory,
   lastDeath,
   onDeath,
@@ -300,6 +314,7 @@ function GameLayer({
     }
 
     append(scene.showGraphics ? `${style.descStyle}\n\n${text}` : text, replace);
+    if (depth === 0) onMusicCue?.(scene.music === "computer" ? "computer" : "main");
 
     const next: VisibleChoice[] = (scene.choices ?? [])
       .filter((choice) => checkCondition(choice.if, ctx))
@@ -328,7 +343,6 @@ function GameLayer({
   const choose = (choice: VisibleChoice) => {
     switch (choice.action) {
       case "wake":
-        onMusicCue?.("main");
         enter(RESPAWN_SCENE);
         return;
       case "launch": {
@@ -359,6 +373,7 @@ function GameLayer({
     return (
       <div
         className="nested-layer"
+        hidden={hidden}
         style={
           {
             "--nested-bg": nestedStyle.bg,
@@ -394,6 +409,7 @@ function GameLayer({
   return (
     <section
       className="game-layer"
+      hidden={hidden}
       style={
         {
           "--layer-font": style.fontFamily,
@@ -459,9 +475,10 @@ export default function App() {
   const [deaths, setDeaths] = useState<Set<DeathId>>(loadDeathSet);
   const [memoryFlags, setMemoryFlags] = useState<Set<MemoryKey>>(loadMemorySet);
   const [lastDeath, setLastDeath] = useState<DeathId | null>(loadLastDeath);
+  const [endings, setEndings] = useState<Set<EndingId>>(loadEndingSet);
   const [showCollection, setShowCollection] = useState(false);
   const [ending, setEnding] = useState<EndingId | null>(null);
-  const snapAudioRef = useRef<HTMLAudioElement | null>(null);
+  const [gameTrack, setGameTrack] = useState<MusicTrack>("main");
   const musicAudioRef = useRef<HTMLAudioElement | null>(null);
   const activeMusicTrackRef = useRef<MusicTrack | null>(null);
   const musicUnlockedRef = useRef(false);
@@ -473,6 +490,10 @@ export default function App() {
   useEffect(() => {
     window.localStorage.setItem("wrong-world-memory", JSON.stringify([...memoryFlags]));
   }, [memoryFlags]);
+
+  useEffect(() => {
+    window.localStorage.setItem("wrong-world-endings", JSON.stringify([...endings]));
+  }, [endings]);
 
   useEffect(() => {
     if (lastDeath === null) window.localStorage.removeItem("wrong-world-last-death");
@@ -487,6 +508,8 @@ export default function App() {
     const current = musicAudioRef.current;
 
     if (current && activeMusicTrackRef.current === track) {
+      // Короткий трек смерти не перезапускаем, когда игрок просто вернулся из коллекции.
+      if (!config.loop) return;
       current.volume = config.volume;
       void current.play().catch(() => {});
       return;
@@ -504,80 +527,73 @@ export default function App() {
     });
   }, []);
 
+  const track: MusicTrack = ending ? "victory" : !started ? "menu" : showCollection ? "collection" : gameTrack;
+  const trackRef = useRef(track);
+  trackRef.current = track;
+
   useEffect(() => {
-    playMusic(ending ? "victory" : started ? "main" : "menu");
-  }, [ending, playMusic, started]);
+    playMusic(track);
+  }, [playMusic, track]);
+
+  // Браузер не даёт играть звук до первого действия игрока: музыка загрузки стартует с первым кликом.
+  useEffect(() => {
+    const unlock = () => playMusic(trackRef.current, true);
+    window.addEventListener("pointerdown", unlock, { once: true });
+    window.addEventListener("keydown", unlock, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+  }, [playMusic]);
 
   useEffect(
     () => () => {
       musicAudioRef.current?.pause();
-      snapAudioRef.current?.pause();
     },
     [],
   );
 
-  const playSnap = useCallback(() => {
-    snapAudioRef.current?.pause();
-    snapAudioRef.current = new Audio(snapFx);
-    snapAudioRef.current.volume = 0.42;
-    void snapAudioRef.current.play().catch(() => {});
+  const handleDeath = useCallback((id: DeathId) => {
+    setGameTrack("death");
+    setDeaths((previous) => new Set([...previous, id]));
+    setMemoryFlags((previous) => new Set([...previous, id]));
+    setLastDeath(id);
   }, []);
-
-  const handleDeath = useCallback(
-    (id: DeathId) => {
-      playMusic(id === 9 ? "window" : "death", true);
-      playSnap();
-      setDeaths((previous) => new Set([...previous, id]));
-      setMemoryFlags((previous) => new Set([...previous, id]));
-      setLastDeath(id);
-    },
-    [playMusic, playSnap],
-  );
 
   const handleMemory = useCallback((flag: MemoryKey) => {
     setMemoryFlags((previous) => new Set([...previous, flag]));
   }, []);
 
-  const handleMusicCue = useCallback(
-    (track: MusicTrack) => {
-      playMusic(track, true);
-    },
-    [playMusic],
-  );
-
   const handleStart = useCallback(() => {
     setShowCollection(false);
+    setGameTrack("main");
     setStarted(true);
-    playMusic("main", true);
-  }, [playMusic]);
+  }, []);
 
   const handleBackToMenu = useCallback(() => {
     setShowCollection(false);
     setStarted(false);
     setEnding(null);
-    playMusic("menu", true);
-  }, [playMusic]);
+  }, []);
 
-  const handleWin = useCallback(
-    (nextEnding: EndingId) => {
-      setShowCollection(false);
-      setEnding(nextEnding);
-      playMusic("victory", true);
-    },
-    [playMusic],
-  );
+  const handleWin = useCallback((nextEnding: EndingId) => {
+    setShowCollection(false);
+    setEndings((previous) => new Set([...previous, nextEnding]));
+    setEnding(nextEnding);
+  }, []);
 
   const handleReset = useCallback(() => {
     window.localStorage.removeItem("wrong-world-deaths");
     window.localStorage.removeItem("wrong-world-memory");
+    window.localStorage.removeItem("wrong-world-endings");
     setDeaths(new Set());
     setMemoryFlags(new Set());
+    setEndings(new Set());
     setLastDeath(null);
     setEnding(null);
     setStarted(false);
     setShowCollection(false);
-    playMusic("menu", true);
-  }, [playMusic]);
+  }, []);
 
   if (ending) {
     const currentEnding = ENDINGS[ending];
@@ -594,8 +610,8 @@ export default function App() {
               className="gold-button"
               onClick={() => {
                 setEnding(null);
+                setGameTrack("main");
                 setStarted(true);
-                playMusic("main", true);
               }}
             >
               ИГРАТЬ ДАЛЬШЕ
@@ -633,7 +649,7 @@ export default function App() {
     <main className="wrong-world-shell">
       <header className="game-topbar">
         <div className="death-counter">
-          💀 {deaths.size} / {TOTAL_DEATHS}
+          💀 {deaths.size} / {TOTAL_DEATHS} · 🌅 {endings.size} / {TOTAL_ENDINGS}
         </div>
         <div className="topbar-actions">
           <button type="button" onClick={() => setShowCollection((value) => !value)}>
@@ -645,8 +661,28 @@ export default function App() {
         </div>
       </header>
 
-      {showCollection ? (
-        <section className="collection-panel" aria-label="Death collection">
+      {showCollection && (
+        <section className="collection-panel" aria-label="Коллекция">
+          <h2 className="collection-heading">
+            Концовки · {endings.size} / {TOTAL_ENDINGS}
+          </h2>
+          {(Object.keys(ENDINGS) as EndingId[]).map((id) =>
+            endings.has(id) ? (
+              <article key={id} className="death-card ending-entry">
+                <div className="death-card__name">
+                  {ENDINGS[id].icon} {ENDINGS[id].title}
+                </div>
+                <div className="death-card__desc">{ENDINGS[id].desc}</div>
+              </article>
+            ) : (
+              <article key={id} className="locked-death">
+                🌅 КОНЦОВКА: ???
+              </article>
+            ),
+          )}
+          <h2 className="collection-heading">
+            Смерти · {deaths.size} / {TOTAL_DEATHS}
+          </h2>
           {Object.entries(DEATHS).map(([id, death]) => {
             const deathId = Number(id) as DeathId;
 
@@ -659,17 +695,17 @@ export default function App() {
             );
           })}
         </section>
-      ) : (
-        <GameLayer
-          depth={0}
-          memory={memoryFlags}
-          lastDeath={lastDeath}
-          onDeath={handleDeath}
-          onMemory={handleMemory}
-          onWin={handleWin}
-          onMusicCue={handleMusicCue}
-        />
       )}
+      <GameLayer
+        depth={0}
+        hidden={showCollection}
+        memory={memoryFlags}
+        lastDeath={lastDeath}
+        onDeath={handleDeath}
+        onMemory={handleMemory}
+        onWin={handleWin}
+        onMusicCue={setGameTrack}
+      />
     </main>
   );
 }

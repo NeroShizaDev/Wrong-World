@@ -89,8 +89,8 @@ export const DEATHS = {
     desc: "Вы так долго ждали, что всё рассосётся само, что умерли от голода и жажды. Кактус наблюдал.",
   },
   20: {
-    name: "Кактус-предатель",
-    desc: "Вы схватили кактус, которого не поливали с весны. Он оказался ядовитым и злопамятным.",
+    name: "Кактус не виноват",
+    desc: "Вы схватили кактус без спроса. Он испугался, а от страха кактусы становятся ядовитыми. Кактус тут ни при чём.",
   },
   21: {
     name: "Чай с секретом",
@@ -116,7 +116,7 @@ export const DEATHS = {
 
 export type DeathId = keyof typeof DEATHS;
 export type MemoryKey = DeathId | string;
-export type EndingId = "survivor";
+export type EndingId = "survivor" | "cactus";
 
 export const ENDINGS: Record<EndingId, { title: string; icon: string; desc: string }> = {
   survivor: {
@@ -126,6 +126,14 @@ export const ENDINGS: Record<EndingId, { title: string; icon: string; desc: stri
       "Вы приручили стул-мимик, стравив его с одеялом-убийцей.\n" +
       "Верхом на мимике вы вырвались из неправильной комнаты.\n" +
       "Где-то позади, в пустой комнате, в 7:00 звонит будильник. Без вас.",
+  },
+  cactus: {
+    title: "КАКТУС НЕ ВИНОВАТ",
+    icon: "🌵",
+    desc:
+      "Вы извинились перед кактусом и впервые с весны его полили.\n" +
+      "Коридор так и не завезли — кактус вырастил свой.\n" +
+      "Теперь он живёт во дворе, дорос до второго этажа и больше никого не боится.",
   },
 };
 
@@ -167,7 +175,11 @@ export type SceneVariant = {
   idle?: boolean;
   /** Показать перед текстом описание графики текущего слоя (для игры в игре). */
   showGraphics?: boolean;
+  /** Музыка сцены в настоящей комнате; без поля играет основная тема. */
+  music?: SceneMusic;
 };
+
+export type SceneMusic = "computer";
 
 export type SceneDef = SceneVariant | { variants: SceneVariant[] };
 
@@ -213,7 +225,8 @@ const ROOM: ChoiceDef[] = [
 
 const ROOM_NOTES: { if: Condition; text: string }[] = [
   { if: { run: ["has_blanket"] }, text: "Под мышкой ворчит скатанное одеяло." },
-  { if: { run: ["has_cactus"] }, text: "Кактус сидит у вас на плече и мурчит." },
+  { if: { run: ["has_cactus"], noRun: ["cactus_watered"] }, text: "Кактус сидит у вас на плече и мурчит." },
+  { if: { run: ["cactus_watered"] }, text: "Политый кактус заметно подрос и тянет корни к щели под дверью." },
   { if: { run: ["has_tea"] }, text: "В руке кружка с зельем. Пить его вы не собираетесь." },
   { if: { run: ["tamed"] }, text: "Стул-мимик ходит за вами по пятам, как собака." },
 ];
@@ -466,12 +479,14 @@ export const SCENES: Record<string, SceneDef> = {
         text: "Вы садитесь на мимика. Он довольно урчит и сам подкатывает вас к столу. Монитор просыпается.",
         choices: PC,
         idle: false,
+        music: "computer",
       },
       {
         if: { run: ["chair_stool"] },
         text: "Вы садитесь на табуретку. Монитор просыпается, руна на корпусе пульсирует.",
         choices: PC,
         idle: false,
+        music: "computer",
       },
       {
         if: { run: ["has_cactus"] },
@@ -482,6 +497,7 @@ export const SCENES: Record<string, SceneDef> = {
         remember: ["know_mimic"],
         choices: PC,
         idle: false,
+        music: "computer",
       },
       {
         if: { mem: ["know_mimic"] },
@@ -490,6 +506,7 @@ export const SCENES: Record<string, SceneDef> = {
           "Монитор просыпается.",
         choices: PC,
         idle: false,
+        music: "computer",
       },
       {
         text: "Стул мягкий. Слишком мягкий. Сиденье смыкается вокруг вас, и стул начинает жевать.",
@@ -503,6 +520,7 @@ export const SCENES: Record<string, SceneDef> = {
     text: "Монитор гудит. На рабочем столе — ярлык «Wrong World Demo». Вы такую игру не устанавливали.",
     choices: PC,
     idle: false,
+    music: "computer",
   },
 
   skull: {
@@ -515,6 +533,7 @@ export const SCENES: Record<string, SceneDef> = {
       { text: "Встать из-за стола", to: "room" },
     ],
     idle: false,
+    music: "computer",
   },
 
   task_manager: {
@@ -530,6 +549,7 @@ export const SCENES: Record<string, SceneDef> = {
       { text: "Закрыть диспетчер", to: "pc" },
     ],
     idle: false,
+    music: "computer",
   },
   death_update: {
     text:
@@ -554,6 +574,7 @@ export const SCENES: Record<string, SceneDef> = {
       { text: "Встать из-за стола", to: "room" },
     ],
     idle: false,
+    music: "computer",
   },
   death_altf4: {
     text: "Вы зажимаете Alt+F4 изо всех сил. Компьютер понимает команду буквально и закрывает самое активное, что есть в комнате.",
@@ -601,6 +622,7 @@ export const SCENES: Record<string, SceneDef> = {
         text: "Вы выходите из игры. Монитор моргает и показывает рабочий стол.",
         choices: PC,
         idle: false,
+        music: "computer",
       },
       {
         text: "Вы выходите на уровень выше. Картинка становится чуть чётче.",
@@ -683,7 +705,7 @@ export const SCENES: Record<string, SceneDef> = {
 
   // ── Кактус ──────────────────────────────────────────────────────────────
   cactus: {
-    text: "Ваш кактус. Вы не поливали его с весны. Он смотрит на вас и моргает.",
+    text: "Ваш кактус. Вы не поливали его с весны. Он смотрит на вас, моргает и, кажется, побаивается.",
     choices: [
       { text: "Потрогать кактус", to: "death_cactus" },
       { text: "Протянуть ладонь и извиниться", to: "cactus_friend", if: { mem: [20] } },
@@ -691,11 +713,14 @@ export const SCENES: Record<string, SceneDef> = {
       { text: "Отойти", to: "room" },
     ],
   },
-  death_cactus: { text: "Вы хватаете кактус. Он тёплый — и ядовитый. Про весну он всё помнит.", death: 20 },
+  death_cactus: {
+    text: "Вы хватаете кактус. Он пугается, а от страха колючки наливаются ядом. Пальцы немеют первыми.",
+    death: 20,
+  },
   cactus_friend: {
     text:
       "Вы протягиваете ладонь и честно извиняетесь за весну. Кактус долго думает, потом осторожно касается вас одной колючкой — и МУРЧИТ. " +
-      "Вы сажаете его на плечо. Колется, но мило.",
+      "Колючки мягкие: когда кактус не боится, он совсем не ядовитый. Вы сажаете его на плечо.",
     set: ["has_cactus"],
     choices: ROOM,
   },
@@ -714,8 +739,18 @@ export const SCENES: Record<string, SceneDef> = {
     choices: [
       { text: "Налить воды и включить", to: "death_kettle" },
       { text: "Включить чайник и отойти на три шага", to: "tea", if: { mem: [13] } },
+      { text: "Налить воды, пока кактус сторожит саламандру", to: "water_cactus", if: { run: ["has_cactus"], noRun: ["cactus_watered"] } },
       { text: "Отойти", to: "room" },
     ],
+  },
+  water_cactus: {
+    text:
+      "Кактус на плече шипит на чайник. Саламандра пугается и прячется в носик. " +
+      "Вы спокойно наливаете стакан воды и впервые с весны поливаете кактус.\n" +
+      "Кактус пьёт, зеленеет на глазах и пускает корни прямо вам в рукав. Кажется, ему тесно в этой комнате.",
+    set: ["cactus_watered"],
+    notes: ROOM_NOTES,
+    choices: ROOM,
   },
   death_kettle: {
     text: "Вы наклоняетесь налить воды. Саламандра сканирует: «Обнаружено: 60% воды». Этого ей достаточно.",
@@ -759,7 +794,8 @@ export const SCENES: Record<string, SceneDef> = {
         if: { run: ["courier_gone"] },
         text: "Курьер ушёл. Из-под двери тянет холодом и синим светом.",
         choices: [
-          { text: "Открыть дверь", to: "death_void" },
+          { text: "Открыть дверь", to: "death_void", if: { noRun: ["cactus_watered"] } },
+          { text: "Открыть дверь и довериться кактусу", to: "escape_cactus", if: { run: ["cactus_watered"] } },
           { text: "Отойти", to: "room" },
         ],
       },
@@ -788,7 +824,8 @@ export const SCENES: Record<string, SceneDef> = {
       "Курьеры пройдут куда угодно — профессия такая.",
     set: ["courier_gone"],
     choices: [
-      { text: "Открыть дверь", to: "death_void" },
+      { text: "Открыть дверь", to: "death_void", if: { noRun: ["cactus_watered"] } },
+      { text: "Открыть дверь и довериться кактусу", to: "escape_cactus", if: { run: ["cactus_watered"] } },
       { text: "Отойти", to: "room" },
     ],
   },
@@ -825,6 +862,15 @@ export const SCENES: Record<string, SceneDef> = {
       "Там, где у вас нет пола, у мимика есть ножки: мимики испокон веков ходят сквозь пустоту — так они и попадают в сундуки.\n" +
       "Под ножками мимика проступает коридор, подъезд, двор. Обычный двор, без мужика на метле. Впереди — закат.",
     choices: [{ text: "Навстречу закату", action: "win", ending: "survivor" }],
+    idle: false,
+  },
+  escape_cactus: {
+    text:
+      "Вы открываете дверь. За ней синяя пустота — коридор так и не завезли. " +
+      "Кактус спрыгивает с плеча и выстреливает корнями в пустоту. Корни сплетаются в пол, стены, вешалку " +
+      "и даже в велосипед, который вы так и не продали. Коридор не завезли — кактус вырастил свой.\n" +
+      "Вы идёте по зелёному коридору, кактус снова едет у вас на плече. Впереди подъезд, двор и закат.",
+    choices: [{ text: "Выйти во двор вместе с кактусом", action: "win", ending: "cactus" }],
     idle: false,
   },
 };
