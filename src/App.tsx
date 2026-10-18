@@ -26,6 +26,7 @@ import {
   sceneText,
 } from "./story";
 import type { ChoiceAction, DeathId, EndingId, MemoryKey, StoryContext } from "./story";
+import { RUNNER_BEST_KEY, RunnerGame } from "./RunnerGame";
 
 type MusicTrack = "menu" | "main" | "computer" | "death" | "collection" | "victory";
 
@@ -175,6 +176,14 @@ function loadLastDeath(): DeathId | null {
   } catch {
     return null;
   }
+}
+
+// Секретная «Новая игра» («Дичь идёт») открывается, только когда собраны все смерти и все концовки.
+function isCollectionComplete(deaths: Set<DeathId>, endings: Set<EndingId>) {
+  return (
+    Object.keys(DEATHS).every((id) => deaths.has(Number(id) as DeathId)) &&
+    (Object.keys(ENDINGS) as EndingId[]).every((id) => endings.has(id))
+  );
 }
 
 function DeathCard({ id, death }: { id: DeathId; death: (typeof DEATHS)[DeathId] }) {
@@ -472,6 +481,7 @@ function GameLayer({
 
 export default function App() {
   const [started, setStarted] = useState(false);
+  const [runnerStarted, setRunnerStarted] = useState(false);
   const [deaths, setDeaths] = useState<Set<DeathId>>(loadDeathSet);
   const [memoryFlags, setMemoryFlags] = useState<Set<MemoryKey>>(loadMemorySet);
   const [lastDeath, setLastDeath] = useState<DeathId | null>(loadLastDeath);
@@ -527,7 +537,15 @@ export default function App() {
     });
   }, []);
 
-  const track: MusicTrack = ending ? "victory" : !started ? "menu" : showCollection ? "collection" : gameTrack;
+  const track: MusicTrack = ending
+    ? "victory"
+    : runnerStarted
+      ? "main"
+      : !started
+        ? "menu"
+        : showCollection
+          ? "collection"
+          : gameTrack;
   const trackRef = useRef(track);
   trackRef.current = track;
 
@@ -566,13 +584,22 @@ export default function App() {
 
   const handleStart = useCallback(() => {
     setShowCollection(false);
+    setRunnerStarted(false);
     setGameTrack("main");
     setStarted(true);
+  }, []);
+
+  const handleRunnerStart = useCallback(() => {
+    setShowCollection(false);
+    setStarted(false);
+    setEnding(null);
+    setRunnerStarted(true);
   }, []);
 
   const handleBackToMenu = useCallback(() => {
     setShowCollection(false);
     setStarted(false);
+    setRunnerStarted(false);
     setEnding(null);
   }, []);
 
@@ -586,14 +613,18 @@ export default function App() {
     window.localStorage.removeItem("wrong-world-deaths");
     window.localStorage.removeItem("wrong-world-memory");
     window.localStorage.removeItem("wrong-world-endings");
+    window.localStorage.removeItem(RUNNER_BEST_KEY);
     setDeaths(new Set());
     setMemoryFlags(new Set());
     setEndings(new Set());
     setLastDeath(null);
     setEnding(null);
     setStarted(false);
+    setRunnerStarted(false);
     setShowCollection(false);
   }, []);
+
+  const collectionComplete = isCollectionComplete(deaths, endings);
 
   if (ending) {
     const currentEnding = ENDINGS[ending];
@@ -604,6 +635,13 @@ export default function App() {
           <div className="ending-icon">{currentEnding.icon}</div>
           <h1>{currentEnding.title}</h1>
           <p>{currentEnding.desc}</p>
+          {collectionComplete && (
+            <p className="ending-unlock">
+              💀 {TOTAL_DEATHS} / {TOTAL_DEATHS} · 🌅 {TOTAL_ENDINGS} / {TOTAL_ENDINGS}
+              <br />
+              Коллекция собрана. Теперь «Новая игра» — правда новая игра.
+            </p>
+          )}
           <div className="ending-actions">
             <button
               type="button"
@@ -616,6 +654,11 @@ export default function App() {
             >
               ИГРАТЬ ДАЛЬШЕ
             </button>
+            {collectionComplete && (
+              <button type="button" className="gold-button new-game-button" onClick={handleRunnerStart}>
+                НОВАЯ ИГРА
+              </button>
+            )}
             <button type="button" className="danger-button" onClick={handleReset}>
               СБРОС
             </button>
@@ -623,6 +666,10 @@ export default function App() {
         </div>
       </main>
     );
+  }
+
+  if (runnerStarted) {
+    return <RunnerGame onExit={handleBackToMenu} />;
   }
 
   if (!started) {
@@ -637,9 +684,16 @@ export default function App() {
             <br />
             Только за ночь в неё пришла магия — и всё стало неправильным.
           </p>
-          <button type="button" className="gold-button" onClick={handleStart}>
-            ПРОСНУТЬСЯ
-          </button>
+          <div className="title-actions">
+            <button type="button" className="gold-button" onClick={handleStart}>
+              ПРОСНУТЬСЯ
+            </button>
+            {collectionComplete && (
+              <button type="button" className="gold-button new-game-button" onClick={handleRunnerStart}>
+                НОВАЯ ИГРА
+              </button>
+            )}
+          </div>
         </section>
       </main>
     );
